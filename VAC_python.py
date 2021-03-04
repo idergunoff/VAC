@@ -1,12 +1,12 @@
 import datetime
 import os
+import sys
 from copy import deepcopy
 import pickle
 
 import pandas as pd
 import numpy as np
 import struct
-
 import docx
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -14,15 +14,15 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
-from VAC_dialog import *
 from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication, QFileDialog, QCheckBox
+from VAC_dialog import *
 
 import pyqtgraph as pg
 
 import matplotlib.pyplot as plt
 
-import sys
+
 app = QtWidgets.QApplication(sys.argv)
 MainWindow = QtWidgets.QMainWindow()
 ui = Ui_MainWindow()
@@ -30,20 +30,11 @@ ui.setupUi(MainWindow)
 MainWindow.show()
 MainWindow.showMaximized()
 
-# Form, Window = uic.loadUiType("VAC_dialog.ui")
-#
-# app = QApplication([])
-# window = Window()
-# ui = Form()
-# ui.setupUi(window)
-# window.show()
-# window.showMaximized()
-
 # pd.options.mode.chained_assignment = None  # default='warn' отключение предупреждений
 
 all_signals = pd.DataFrame()
 all_signals_old = pd.DataFrame()
-columns = ['name', 'useful_depth', 'max_min', 'coeff_A', 'coeff_B', 'k_damp']
+columns = ['name', 'useful_depth', 'max_min', 'coeff_A', 'coeff_B', 'k_damp', 'max_h']
 all_stat = pd.DataFrame(index=list(range(1, 12)), columns=columns)
 all_stat_old = pd.DataFrame(index=list(range(1, 16)), columns=columns)
 int_undefine_cement = []
@@ -84,6 +75,7 @@ def open_dir():
                     all_signals[str(n) + '_envelope'] = all_signals[str(n) + '_envelope'].rolling(80, min_periods=1,
                                                                                                   center=True).mean()  # усреднение
                     all_stat['name'][n] = file  # записываем названия файлов в таблицу статистики
+                    all_stat['max_h'][n] = all_signals['depth'].max()
                 n += 1
 
     ui.label_direct.setText("<b>" + dir_name + ":</b>")
@@ -105,10 +97,7 @@ def open_dir():
     ui.pushButton_sum2.setEnabled(True)
     ui.pushButton_sum3.setEnabled(True)
 
-    ui.doubleSpinBox_int_max.setMaximum(all_signals['depth'].max())  # устанавливаем в спинбоксы интервала сигнала
-    ui.doubleSpinBox_int_min.setMaximum(all_signals['depth'].max())  # максимально допустимые значения из файла
-    ui.doubleSpinBox_int_max.setValue(all_signals['depth'].max())  # устанавливаем в спинбоксы значения мин и макс
-    ui.doubleSpinBox_int_min.setValue(all_signals['depth'].min())
+    set_int(all_signals)
 
     for i in range(9, 12):      # пустые столбцы для суммы сигналов
         all_signals[str(i) + '_envelope'] = 0
@@ -134,14 +123,14 @@ def open_dir_old():
             len_signal = int(len(signal_b) / 4)             # количество чисел
             uiat_b = '<' + str(len_signal) + 'i'          # формат файла для чтения
             signal = struct.unpack(uiat_b, signal_b)      # пересчет байтов в кортеж сигнала
-            f.close()                                       # закрываем файл
-            if n == 1:  # первый файл записываем в шум и создаем колонку с глубиной
-                max_gl = len_signal*0.515
-                signal_f = interp1d(range(len_signal), signal, kind='linear')
+            f.close()  # закрываем файл
+            max_gl = len_signal*0.515
+            if n == 1:  # первый файл записываем в шум и создаем колонку с глубиной :todo
+                signal_f = interp1d(np.linspace(0, max_gl, len_signal, endpoint=True), signal, kind='linear')
                 all_signals_old['depth'] = np.arange(0, max_gl, 0.05839)  # шкала глубин через 0.515 метров
                 all_signals_old['noise'] = signal_f(all_signals_old['depth'])
             else:
-                signal_f = interp1d(range(len_signal), signal, kind='linear')
+                signal_f = interp1d(np.linspace(0, max_gl, len_signal, endpoint=True), signal, kind='linear')
                 all_signals_old[n-1] = signal_f(all_signals_old['depth'])
                 all_stat_old['name'][n-1] = file  # записываем названия файлов в таблицу статистики
             n += 1
@@ -171,15 +160,76 @@ def open_dir_old():
     ui.pushButton_sum2_old.setEnabled(True)
     ui.pushButton_sum3_old.setEnabled(True)
 
-    ui.doubleSpinBox_int_max.setMaximum(all_signals_old['depth'].max())  # устанавливаем в спинбоксы интервала сигнала
-    ui.doubleSpinBox_int_min.setMaximum(all_signals_old['depth'].max())  # максимально допустимые значения из файла
-    ui.doubleSpinBox_int_max.setValue(all_signals_old['depth'].max())  # устанавливаем в спинбоксы значения мин и макс
-    ui.doubleSpinBox_int_min.setValue(all_signals_old['depth'].min())
+    set_int(all_signals_old)
 
     for i in range(13, 16):      # пустые столбцы для суммы сигналов
         all_signals_old[i] = 0
 
     calc_to_int_old()  # запускаем функцию обработки сигнала в интервале
+
+
+def open_sig():
+    global all_signals
+    file_name = QFileDialog.getOpenFileName(filter='*.lvm')
+    checkboxes = ui.new_device.findChildren(QCheckBox)
+    n_chek = 0
+    for item in checkboxes:
+        if item.isEnabled() and int(item.text()[0:2]) not in [9, 10, 11]:
+            n_chek += 1
+    if n_chek == 8:
+        all_signals = pd.DataFrame()
+        for item in checkboxes:
+            item.setEnabled(False)
+            item.setStyleSheet('background: white')
+        ui.pushButton_sum1.setEnabled(False)
+        ui.pushButton_sum2.setEnabled(False)
+        ui.pushButton_sum3.setEnabled(False)
+    signal = pd.read_table(file_name[0], delimiter='\t', header=None)  # считываем таблицу
+    if 'depth' in all_signals:
+        if all_signals['depth'].max() < signal[1].max():
+            ui.progressBar.setMaximum(len(signal[1])-len(all_signals['depth']))
+            pb = 1
+            ui.label_info.setText('Загружаемый сигнал больше загруженных ранее, наращиваем таблицу...')
+            ui.label_info.setStyleSheet('color:blue')
+            while len(all_signals['depth']) < len(signal[1]):
+                all_signals.loc[len(all_signals['depth'])] = np.NaN
+                ui.progressBar.setValue(pb)
+                pb += 1
+            all_signals['depth'] = signal[1]
+            set_int(all_signals)
+            ui.label_info.setText('Готово!')
+            ui.label_info.setStyleSheet('color:green')
+    else:
+        all_signals['depth'] = signal[1]
+        set_int(all_signals)
+    for item in checkboxes:
+        if not item.isEnabled() and int(item.text()[0:2]) not in [9, 10, 11]:
+            n_sig = int(item.text()[0:2])
+            item.setText(str(n_sig) + ' ' + file_name[0].split('/')[-1][:20])
+            all_signals[n_sig] = np.abs(signal[2])
+            n_max = ((np.diff(np.sign(np.diff(all_signals[n_sig]))) < 0).nonzero()[0] + 1).tolist()  # находим максимумы
+            n_max.insert(0, 0)  # добавляем начальную и конечную точки                              # сигнала
+            n_max.append(int(len(all_signals[n_sig])) - 1)
+            max_x = all_signals.loc[n_max, 'depth']  # выбираем x и y максимумов
+            max_y = all_signals.loc[n_max, n_sig]
+            envelope = interp1d(max_x, max_y, kind='linear')  # выполняем интерполяцию по максимуму, получая огибающую
+            all_signals[str(n_sig) + '_envelope'] = envelope(all_signals['depth'])
+            all_signals[str(n_sig) + '_envelope'] = all_signals[str(n_sig) + '_envelope'].rolling(80, min_periods=1,
+                                                                                  center=True).mean()  # усреднение
+            all_stat['name'][n_sig] = item.text()
+            all_stat['max_h'][n_sig] = signal[1].max()
+            item.setEnabled(True)
+            item.setCheckState(2)
+            calc_to_int()
+            break
+
+
+def open_sig_old():
+    global all_signals_old
+    checkboxes = ui.old_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        if not item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15]:
+            print(item.text())
 
 
 def calc_to_int():
@@ -188,68 +238,71 @@ def calc_to_int():
     coeff_norm = ui.doubleSpinBox_coeff_norm.value()  # считываем значения коэффициентов из спинбоксов
     coeff_func = ui.doubleSpinBox_coeff_func.value()
     coeff_dif_res = ui.spinBox_coeff_dif_res.value()
-    mean_win = ui.spinBox_mean_win.value()
-
-
 
     int_min = all_signals.index[all_signals['depth'] ==  # определяем интервалы индексов min - max
                                 get_nearest_value(all_signals['depth'], ui.doubleSpinBox_int_min.value())].tolist()[0]
     int_max = all_signals.index[all_signals['depth'] ==
                                 get_nearest_value(all_signals['depth'], ui.doubleSpinBox_int_max.value())].tolist()[0]
+    # расчет рекомендуемого окна усреднения по формуле из Щелкуна, установка значения в спинбок
+    auto_mean_win = (int_max - int_min) / (1 + 3.322 * np.log(int_max - int_min)) / 2.302585
+    ui.spinBox_mean_win.setValue(auto_mean_win)
+    mean_win = ui.spinBox_mean_win.value()
+
     ui.progressBar.setMaximum(8)
     ui.label_info.setText('Расчет кривых нового оборудования...')
     ui.label_info.setStyleSheet('color:blue')
 
     for i in range(1, 12):
-        if all_signals[str(i) + '_envelope'][1] != 0:
-            max_min = all_signals[str(i) + '_envelope'].iloc[int_min:int_max].max() / \
-                      all_signals[str(i) + '_envelope'].iloc[int_min:int_max].min()
-            all_stat['max_min'][i] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
-            all_signals[str(i) + '_envelope-1'] = all_signals[str(i) + '_envelope'].shift(-1)  # сдвиг огибающ сигнала на 1
-            all_signals[str(i) + '_mean'] = all_signals[str(i) + '_envelope'].rolling(mean_win, min_periods=1,
-                                                                                      center=True).mean()  # усреднение
-            all_signals[str(i) + '_norm'] = all_signals[str(i) + '_envelope'] / (all_signals[str(i) + '_mean'] + coeff_norm)
-            # расчет цементограммы по усредняющей с коэффициентом
-            popt, pcov = curve_fit(func1, all_signals['depth'].iloc[int_min:int_max],  # расчет коэф для функции
-                                   all_signals[str(i) + '_envelope'].iloc[int_min:int_max])
-            all_stat['coeff_A'][i] = popt[0]
-            all_stat['coeff_B'][i] = popt[1]
-            all_signals[str(i) + '_func'] = func1(all_signals['depth'], popt[0], popt[1]) + coeff_func  # построение
-            # фунции в интервале сигнала со сдвигом по Y на coeff_func
-            """Расчет коэффициента затухания"""
-            all_signals[str(i) + '_func_kdamp'] = all_signals[str(i) + '_func'][0]/all_signals[str(i) + '_func']
-            i_kdamp = all_signals.index[all_signals[str(i) + '_func_kdamp'] == get_nearest_value(all_signals[str(i) +
-                                                                                 '_func_kdamp'], np.exp(1))].tolist()[0]
-            # all_stat['k_damp'][i] = 0.2029*np.log(np.exp(1)/all_signals['depth'][i_kdamp])+0.9127
-            all_stat['k_damp'][i] = np.exp(1) / all_signals['depth'][i_kdamp]
-            # расчет
-            # коэффициента затухания и пресчет в размерность коэффициента качества
-            all_signals[str(i) + '_rel_ampl'] = (all_signals[str(i) + '_envelope-1'] - all_signals[str(i) + '_func']) /\
-                                                all_signals[str(i) + '_envelope-1']  # расчет цементограммы по функции
-            all_signals[str(i) + '_mean-1'] = all_signals[str(i) + '_mean'].shift(-1)  # сдвиг усредненного сигнала на 1
-            all_signals[str(i) + '_diff_norm'] = (all_signals[str(i) + '_mean-1'] - all_signals[str(i) + '_mean']) / \
-                                                 all_signals[str(i) + '_mean']  # нормированная производная
-            all_signals[str(i) + '_diff_norm-1'] = all_signals[str(i) + '_diff_norm'].shift(-1)  # сдвиг
-            all_signals[str(i) + '_diff_result'] = (all_signals[str(i) + '_diff_norm-1'] + all_signals[
-                str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+        if (str(i) + '_envelope') in all_signals:
+            if all_signals[str(i) + '_envelope'][1] != 0:
+                int_max = calc_max_int(all_signals, all_stat, i)
+                max_min = all_signals[str(i) + '_envelope'].iloc[int_min:int_max].max() / \
+                          all_signals[str(i) + '_envelope'].iloc[int_min:int_max].min()
+                all_stat['max_min'][i] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
+                all_signals[str(i) + '_envelope-1'] = all_signals[str(i) + '_envelope'].shift(-1)  # сдвиг огибающ сигнала на 1
+                all_signals[str(i) + '_mean'] = all_signals[str(i) + '_envelope'].rolling(mean_win, min_periods=1,
+                                                                                          center=True).mean()  # усреднение
+                all_signals[str(i) + '_norm'] = all_signals[str(i) + '_envelope'] / (all_signals[str(i) + '_mean'] + coeff_norm)
+                # расчет цементограммы по усредняющей с коэффициентом
+                popt, pcov = curve_fit(func1, all_signals['depth'].iloc[int_min:int_max],  # расчет коэф для функции
+                                       all_signals[str(i) + '_envelope'].iloc[int_min:int_max])
+                all_stat['coeff_A'][i] = popt[0]
+                all_stat['coeff_B'][i] = popt[1]
+                all_signals[str(i) + '_func'] = func1(all_signals['depth'], popt[0], popt[1]) + coeff_func  # построение
+                # фунции в интервале сигнала со сдвигом по Y на coeff_func
+                """Расчет коэффициента затухания"""
+                all_signals[str(i) + '_func_kdamp'] = all_signals[str(i) + '_func'][0]/all_signals[str(i) + '_func']
+                i_kdamp = all_signals.index[all_signals[str(i) + '_func_kdamp'] == get_nearest_value(all_signals[str(i) +
+                                                                                     '_func_kdamp'], np.exp(1))].tolist()[0]
+                # all_stat['k_damp'][i] = 0.2029*np.log(np.exp(1)/all_signals['depth'][i_kdamp])+0.9127
+                all_stat['k_damp'][i] = np.exp(1) / all_signals['depth'][i_kdamp]
+                # расчет
+                # коэффициента затухания и пресчет в размерность коэффициента качества
+                all_signals[str(i) + '_rel_ampl'] = (all_signals[str(i) + '_envelope-1'] - all_signals[str(i) + '_func']) /\
+                                                    all_signals[str(i) + '_envelope-1']  # расчет цементограммы по функции
+                all_signals[str(i) + '_mean-1'] = all_signals[str(i) + '_mean'].shift(-1)  # сдвиг усредненного сигнала на 1
+                all_signals[str(i) + '_diff_norm'] = (all_signals[str(i) + '_mean-1'] - all_signals[str(i) + '_mean']) / \
+                                                     all_signals[str(i) + '_mean']  # нормированная производная
+                all_signals[str(i) + '_diff_norm-1'] = all_signals[str(i) + '_diff_norm'].shift(-1)  # сдвиг
+                all_signals[str(i) + '_diff_result'] = (all_signals[str(i) + '_diff_norm-1'] + all_signals[
+                    str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
 
-            std_25 = all_signals[str(i) + '_envelope'].iloc[-430:].std()  #стандартное отклонение по последним 25 метрам
-            for n, k in enumerate(all_signals[str(i) + '_mean'].iloc[int_min:int_max]):
-                if k <= std_25 + all_signals[str(i) + '_mean'].iloc[int_min:int_max].min():
-                    useful_depth = all_signals['depth'][n]
-                    all_stat['useful_depth'][i] = useful_depth
-                    break
-            ui.progressBar.setValue(i)
-    # расчет рекомендуемого окна усреднения по формуле из Щелкуна, установка значения в спинбок
-    auto_mean_win = (int_max - int_min) / (1 + 3.322 * np.log(int_max - int_min)) / 2.302585
-    ui.spinBox_mean_win.setValue(auto_mean_win)
+                std_25 = all_signals[str(i) + '_envelope'].iloc[-430:].std()  #стандартное отклонение по последним 25 метрам
+                for n, k in enumerate(all_signals[str(i) + '_mean'].iloc[int_min:int_max]):
+                    if k <= std_25 + all_signals[str(i) + '_mean'].iloc[int_min:int_max].min():
+                        useful_depth = all_signals['depth'][n]
+                        all_stat['useful_depth'][i] = useful_depth
+                        break
+                ui.progressBar.setValue(i)
+
     checkboxes = ui.new_device.findChildren(QCheckBox)
     for item in checkboxes:
-        n_izm = int(item.text()[0:2])
-        item.setToolTip('Коэффициент затухания - '+str(round(all_stat['k_damp'][n_izm], 3))+
-                         '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][n_izm], 2))+
-                         ' м\nМакс/Мин - '+str(round(all_stat['max_min'][n_izm], 3)))
-        item.setStyleSheet(k_damp_detect('new', n_izm))
+        if item.isEnabled():
+            n_izm = int(item.text()[0:2])
+            item.setToolTip('Коэффициент затухания - '+str(round(all_stat['k_damp'][n_izm], 3))+
+                             '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][n_izm], 2))+
+                             ' м\nМакс/Мин - '+str(round(all_stat['max_min'][n_izm], 3)))
+            item.setStyleSheet(k_damp_detect('new', n_izm))
 
     all_signals.to_csv('result.txt', sep='\t')
     all_stat.to_csv('all_stat.txt', sep='\t')
@@ -264,13 +317,14 @@ def calc_to_int_old():
     coeff_norm = ui.doubleSpinBox_coeff_norm_old.value()  # считываем значения коэффициентов из спинбоксов
     coeff_func = ui.doubleSpinBox_coeff_func_old.value()
     coeff_dif_res = ui.spinBox_coeff_dif_res_old.value()
-    mean_win = ui.spinBox_mean_win_old.value()
-
 
     int_min_old = all_signals_old.index[all_signals_old['depth'] ==  # определяем интервалы индексов min - max
                             get_nearest_value(all_signals_old['depth'], ui.doubleSpinBox_int_min.value())].tolist()[0]
     int_max_old = all_signals_old.index[all_signals_old['depth'] ==
                             get_nearest_value(all_signals_old['depth'], ui.doubleSpinBox_int_max.value())].tolist()[0]
+    auto_mean_win = (int_max_old - int_min_old) / (1 + 3.322 * np.log(int_max_old - int_min_old)) / 2.302585
+    ui.spinBox_mean_win_old.setValue(auto_mean_win)
+    mean_win = ui.spinBox_mean_win_old.value()
     ui.progressBar.setMaximum(12)
     ui.label_info.setText('Расчет кривых старого оборудования...')
     ui.label_info.setStyleSheet('color:blue')
@@ -316,8 +370,7 @@ def calc_to_int_old():
                     break
             ui.progressBar.setValue(i)
     # расчет рекомендуемого окна усреднения по формуле из Щелкуна, установка значения в спинбок
-    auto_mean_win = (int_max_old - int_min_old) / (1 + 3.322 * np.log(int_max_old - int_min_old)) / 2.302585
-    ui.spinBox_mean_win_old.setValue(auto_mean_win)
+
     print(all_stat_old)
     print(all_signals_old)
     checkboxes = ui.old_device.findChildren(QCheckBox)
@@ -331,6 +384,7 @@ def calc_to_int_old():
     ui.label_info.setText('Готово!')
     ui.label_info.setStyleSheet('color:green')
     all_signals_old.to_csv('result_old.txt', sep='\t')
+    all_stat_old.to_csv('all_stat_old.txt', sep='\t')
     choice_signal()
 
 
@@ -417,30 +471,37 @@ def plot_graph(n_sig, sig_width, sig_dash, color):
     """
     ui.graphicsView.showGrid(x=True, y=True)  # грид-сетка
     if ui.checkBox_origin_sig.checkState() == 2:
+        int_max = calc_max_int(all_signals, all_stat, n_sig)
         ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
                                y=all_signals[n_sig].iloc[int_min:int_max].tolist(),
                                pen=pg.mkPen(width=sig_width, dash=sig_dash))
     if ui.checkBox_envelop.checkState() == 2:
+        int_max = calc_max_int(all_signals, all_stat, n_sig)
         ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
                                y=all_signals[str(n_sig) + '_envelope'].iloc[int_min:int_max].tolist(),
                                pen=pg.mkPen(color=(255, 0, color), width=sig_width, dash=sig_dash))
     if ui.checkBox_func.checkState() == 2:
+        int_max = calc_max_int(all_signals, all_stat, n_sig)
         ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
                                y=all_signals[str(n_sig) + '_func'].iloc[int_min:int_max].tolist(),
                                pen=pg.mkPen(color=(0, 255, color), width=sig_width, dash=sig_dash))
     if ui.checkBox_mean.checkState() == 2:
+        int_max = calc_max_int(all_signals, all_stat, n_sig)
         ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
                                y=all_signals[str(n_sig) + '_mean'].iloc[int_min:int_max].tolist(),
                                pen=pg.mkPen(color=(100, 100, 255 - color), width=sig_width, dash=sig_dash))
     if ui.checkBox_norm.checkState() == 2:
+        int_max = calc_max_int(all_signals, all_stat, n_sig)
         ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
                                y=all_signals[str(n_sig) + '_norm'].iloc[int_min:int_max].tolist(),
                                pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))
     if ui.checkBox_rel_ampl.checkState() == 2:
+        int_max = calc_max_int(all_signals, all_stat, n_sig)
         ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
                                y=all_signals[str(n_sig) + '_rel_ampl'].iloc[int_min:int_max].tolist(),
                                pen=pg.mkPen(color='c', width=sig_width, dash=sig_dash))
     if ui.checkBox_diff_result.checkState() == 2:
+        int_max = calc_max_int(all_signals, all_stat, n_sig)
         ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
                                y=all_signals[str(n_sig) + '_diff_result'].iloc[int_min:int_max].tolist(),
                                pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))
@@ -486,16 +547,17 @@ def change_mean_win():
     coeff_norm = ui.doubleSpinBox_coeff_norm.value()
     coeff_dif_res = ui.spinBox_coeff_dif_res.value()
     for i in range(1, 12):
-        if all_signals[str(i) + '_envelope'][1] != 0:
-            all_signals[str(i) + '_mean'] = all_signals[str(i) + '_envelope'].rolling(mean_win, min_periods=1,
-                                                                                      center=True).mean()
-            all_signals[str(i) + '_norm'] = all_signals[str(i) + '_envelope'] / (all_signals[str(i) + '_mean'] + coeff_norm)
-            all_signals[str(i) + '_mean-1'] = all_signals[str(i) + '_mean'].shift(-1)
-            all_signals[str(i) + '_diff_norm'] = (all_signals[str(i) + '_mean-1'] - all_signals[str(i) + '_mean']) / \
-                                                 all_signals[str(i) + '_mean']
-            all_signals[str(i) + '_diff_norm-1'] = all_signals[str(i) + '_diff_norm'].shift(-1)
-            all_signals[str(i) + '_diff_result'] = (all_signals[str(i) + '_diff_norm-1'] + all_signals[
-                str(i) + '_diff_norm']) * coeff_dif_res
+        if (str(i) + '_envelope') in all_signals:
+            if all_signals[str(i) + '_envelope'][1] != 0:
+                all_signals[str(i) + '_mean'] = all_signals[str(i) + '_envelope'].rolling(mean_win, min_periods=1,
+                                                                                          center=True).mean()
+                all_signals[str(i) + '_norm'] = all_signals[str(i) + '_envelope'] / (all_signals[str(i) + '_mean'] + coeff_norm)
+                all_signals[str(i) + '_mean-1'] = all_signals[str(i) + '_mean'].shift(-1)
+                all_signals[str(i) + '_diff_norm'] = (all_signals[str(i) + '_mean-1'] - all_signals[str(i) + '_mean']) / \
+                                                     all_signals[str(i) + '_mean']
+                all_signals[str(i) + '_diff_norm-1'] = all_signals[str(i) + '_diff_norm'].shift(-1)
+                all_signals[str(i) + '_diff_result'] = (all_signals[str(i) + '_diff_norm-1'] + all_signals[
+                    str(i) + '_diff_norm']) * coeff_dif_res
 
     all_signals.to_csv('result.txt', sep='\t')
     choice_signal()
@@ -540,10 +602,11 @@ def change_func():
     kA = ui.doubleSpinBox_kA.value()
     kB = ui.doubleSpinBox_kB.value()
     for i in range(1, 12):
-        if all_signals[str(i) + '_envelope'][1] != 0:
-            all_signals[str(i) + '_func'] = func1(all_signals['depth'], all_stat['coeff_A'][i]+kA, all_stat['coeff_B'][i]+kB) + coeff_func
-            all_signals[str(i) + '_rel_ampl'] = (all_signals[str(i) + '_envelope-1'] - all_signals[str(i) + '_func']) / \
-                                                all_signals[str(i) + '_envelope-1']
+        if (str(i) + '_envelope') in all_signals:
+            if all_signals[str(i) + '_envelope'][1] != 0:
+                all_signals[str(i) + '_func'] = func1(all_signals['depth'], all_stat['coeff_A'][i]+kA, all_stat['coeff_B'][i]+kB) + coeff_func
+                all_signals[str(i) + '_rel_ampl'] = (all_signals[str(i) + '_envelope-1'] - all_signals[str(i) + '_func']) / \
+                                                    all_signals[str(i) + '_envelope-1']
     choice_signal()
 
 
@@ -643,6 +706,8 @@ def sum_signals(n_sum):
                 all_stat['useful_depth'][n_sum] = useful_depth
                 break
         print(all_stat)
+        all_signals.to_csv('result.txt', sep='\t')
+        all_stat.to_csv('all_stat.txt', sep='\t')
         choice_signal()
 
 
@@ -731,6 +796,8 @@ def sum_signals_old(n_sum):
                 all_stat_old['useful_depth'][n_sum] = useful_depth
                 break
         print(all_stat)
+        all_signals_old.to_csv('result_old.txt', sep='\t')
+        all_stat_old.to_csv('all_stat_old.txt', sep='\t')
         choice_signal()
 
 
@@ -852,19 +919,33 @@ def text_sum_old():
 
 def k_damp_detect(device, n_izm):
     if device == 'new':
-        if all_stat['k_damp'][n_izm] < 0.65:
+        if all_stat['k_damp'][n_izm] < 0.3233:
             return 'background: red'
-        elif 0.65 <= all_stat['k_damp'][n_izm] < 0.82:
+        elif 0.3233 <= all_stat['k_damp'][n_izm] < 0.6806:
             return 'background: yellow'
-        elif all_stat['k_damp'][n_izm] >= 0.82:
+        elif all_stat['k_damp'][n_izm] >= 0.6806:
             return 'background: green'
     elif device == 'old':
-        if all_stat_old['k_damp'][n_izm] < 0.65:
+        if all_stat_old['k_damp'][n_izm] < 0.3233:
             return 'background: red'
-        elif 0.65 <= all_stat_old['k_damp'][n_izm] < 0.82:
+        elif 0.3233 <= all_stat_old['k_damp'][n_izm] < 0.6806:
             return 'background: yellow'
-        elif all_stat_old['k_damp'][n_izm] >= 0.82:
+        elif all_stat_old['k_damp'][n_izm] >= 0.6806:
             return 'background: green'
+    # if device == 'new':
+    #     if all_stat['k_damp'][n_izm] < 0.65:
+    #         return 'background: red'
+    #     elif 0.65 <= all_stat['k_damp'][n_izm] < 0.82:
+    #         return 'background: yellow'
+    #     elif all_stat['k_damp'][n_izm] >= 0.82:
+    #         return 'background: green'
+    # elif device == 'old':
+    #     if all_stat_old['k_damp'][n_izm] < 0.65:
+    #         return 'background: red'
+    #     elif 0.65 <= all_stat_old['k_damp'][n_izm] < 0.82:
+    #         return 'background: yellow'
+    #     elif all_stat_old['k_damp'][n_izm] >= 0.82:
+    #         return 'background: green'
 
 
 def calc_int_cement():
@@ -873,12 +954,13 @@ def calc_int_cement():
     checkboxes = ui.new_device.findChildren(QCheckBox)
     for item in checkboxes:
         if item.checkState() == 2:
+            n_izm = int(item.text()[0:2])
+            int_max = calc_max_int(all_signals, all_stat, n_izm)
             if int_min < 86:
                 cement_sig = pd.DataFrame(all_signals['depth'].iloc[86:int_max])
             else:
                 cement_sig = pd.DataFrame(all_signals['depth'].iloc[int_min:int_max])
             ui.name_cement.setText(item.text())
-            n_izm = int(item.text()[0:2])
             k_damp = all_stat['k_damp'][n_izm]
             if n_izm in [1, 2, 5, 6]:
                 F = '5'
@@ -888,8 +970,10 @@ def calc_int_cement():
                 F = ''
             if int_min < 86:
                 cement_sig['first_sig'] = all_signals[str(n_izm) + '_diff_result'].iloc[86:int_max]
+                cement_sig['func'] = all_signals[str(n_izm) + '_func'].iloc[86:int_max]
             else:
                 cement_sig['first_sig'] = all_signals[str(n_izm) + '_diff_result'].iloc[int_min:int_max]
+                cement_sig['func'] = all_signals[str(n_izm) + '_func'].iloc[int_min:int_max]
 
     if ui.name_cement.text() == 'измерение цементограммы':
         checkboxes = ui.old_device.findChildren(QCheckBox)
@@ -910,8 +994,10 @@ def calc_int_cement():
                     F = ''
                 if int_min_old < 86:
                     cement_sig['first_sig'] = all_signals_old[str(n_izm) + '_diff_result'].iloc[86:int_max_old]
+                    cement_sig['func'] = all_signals_old[str(n_izm) + '_func'].iloc[86:int_max_old]
                 else:
                     cement_sig['first_sig'] = all_signals_old[str(n_izm) + '_diff_result'].iloc[int_min_old:int_max_old]
+                    cement_sig['func'] = all_signals_old[str(n_izm) + '_func'].iloc[int_min_old:int_max_old]
     cement_sig = cement_sig.reset_index(drop=True)
     cement_sig['corr_sig'] = cement_sig['first_sig'].copy()
     cement_sig['corr_coeff'] = 1
@@ -921,8 +1007,8 @@ def calc_int_cement():
     int_undefine_cement = []
     min_value = cement_sig['first_sig'].min()
     max_value = cement_sig['first_sig'].max()
-    ui.spinBox_min_cement.setValue(min_value - (10*(max_value - min_value)/100))
-    ui.spinBox_max_cement.setValue(max_value + (10*(max_value - min_value)/100))
+    ui.doubleSpinBox_min_cement.setValue(min_value - (10*(max_value - min_value)/100))
+    ui.doubleSpinBox_max_cement.setValue(max_value + (10*(max_value - min_value)/100))
     ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value)/3)
     ui.doubleSpinBox_defect2.setValue(min_value + (2*(max_value - min_value)/3))
     ui.doubleSpinBox_x1_line.setValue(cement_sig['depth'].min())
@@ -966,12 +1052,26 @@ def corr_sig():
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x2_line.value())].tolist()[0]
     cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min())
     corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()))/\
-                 cement_sig['plus_sig'].iloc[x1_index:x2_index].max()
+                 cement_sig['plus_sig'].iloc[x1_index:x2_index+1].max()
     xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
-                                                   cement_sig['plus_sig'].iloc[x1_index:x2_index].max())].tolist()[0]
-    corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind='quadratic')
+                                                                              cement_sig['plus_sig'].iloc[
+                                                                              x1_index:x2_index + 1].max())].tolist()[0]
+    if ui.checkBox_lin_cor.checkState() == 2:
+        interp_method = 'linear'
+    else:
+        interp_method = 'quadratic'
 
-    cement_sig['corr_coeff'].iloc[x1_index:x2_index] = corr_coeff(range(x1_index, x2_index))
+    if x1_index == xmax_index:
+        corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
+        print(x1_index, xmax_index, x2_index)
+    elif xmax_index == x2_index:
+        corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
+        print(x1_index, xmax_index, x2_index)
+    else:
+        corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
+        print(x1_index, xmax_index, x2_index)
+
+    cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
     cement_sig['plus_sig'] = cement_sig['plus_sig']*cement_sig['corr_coeff']
     cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min())
     draw_cement()
@@ -984,15 +1084,37 @@ def corr_sig_bottom():
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x2_line.value())].tolist()[0]
     cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min())
     corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min())) / \
-                     cement_sig['plus_sig'].iloc[x1_index:x2_index].min()
+                     cement_sig['plus_sig'].iloc[x1_index:x2_index+1].min()
     xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
                                                                               cement_sig['plus_sig'].iloc[
-                                                                              x1_index:x2_index].min())].tolist()[0]
-    corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind='quadratic')
+                                                                              x1_index:x2_index+1].min())].tolist()[0]
+    if ui.checkBox_lin_cor.checkState() == 2:
+        interp_method = 'linear'
+    else:
+        interp_method = 'quadratic'
+    if x1_index == xmax_index:
+        corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
+        print(x1_index, xmax_index, x2_index)
+    elif xmax_index == x2_index:
+        corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
+        print(x1_index, xmax_index, x2_index)
+    else:
+        corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
+        print(x1_index, xmax_index, x2_index)
 
-    cement_sig['corr_coeff'].iloc[x1_index:x2_index] = corr_coeff(range(x1_index, x2_index))
+    cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
     cement_sig['plus_sig'] = cement_sig['plus_sig'] * cement_sig['corr_coeff']
     cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min())
+    draw_cement()
+
+
+def fix_corr():
+    cement_sig['first_sig'] = cement_sig['corr_sig']
+    draw_cement()
+
+
+def plus_func():
+    cement_sig['corr_sig'] = cement_sig['first_sig'] + cement_sig['func']
     draw_cement()
 
 
@@ -1009,8 +1131,8 @@ def add_undefine():
 
 def cementogramma():
     global options
-    min_cement = ui.spinBox_min_cement.value()
-    max_cement = ui.spinBox_max_cement.value()
+    min_cement = ui.doubleSpinBox_min_cement.value()
+    max_cement = ui.doubleSpinBox_max_cement.value()
     defect1 = ui.doubleSpinBox_defect1.value()
     defect2 = ui.doubleSpinBox_defect2.value()
     cement_sig['quality'] = 0
@@ -1124,8 +1246,8 @@ def cementogramma():
     options = {}
     options['doubleSpinBox_int_min'] = ui.doubleSpinBox_int_min.value()
     options['doubleSpinBox_int_max'] = ui.doubleSpinBox_int_max.value()
-    options['spinBox_min_cement'] = min_cement
-    options['spinBox_max_cement'] = max_cement
+    options['doubleSpinBox_min_cement'] = min_cement
+    options['doubleSpinBox_max_cement'] = max_cement
     options['doubleSpinBox_defect1'] = defect1
     options['doubleSpinBox_defect2'] = defect2
     options['name_signal'] = ui.name_cement.text()
@@ -1207,7 +1329,7 @@ def save_cement():
 
     # интервал исследования
     table.rows[1].cells[1].paragraphs[0].runs[1].text = str(round(cement_sig['depth'].min(), 1))
-    table.rows[1].cells[1].paragraphs[0].runs[5].text = str(round(cement_sig['depth'].max(), 1))
+    table.rows[1].cells[1].paragraphs[0].runs[5].text = str(float(ui.doubleSpinBox_int_max.value()))
     doc.paragraphs[9].runs[10].text = str(round(cement_sig['depth'].min(), 1))
     doc.paragraphs[9].runs[12].text = str(round(cement_sig['depth'].max(), 1))
     int_study = cement_sig['depth'].max() - cement_sig['depth'].min()
@@ -1339,8 +1461,14 @@ def save_cement():
 
 
 def draw_total_cement(device, n_izm, n_graph, fig, count_sig):
-    signal = pd.DataFrame(device['depth'].iloc[int_min:int_max].copy())
-    signal['curve'] = device[str(n_izm) + '_diff_result'].iloc[int_min:int_max].copy()
+    if device is all_signals_old:
+        int_min_self = int_min_old
+        int_max_self = int_max_old
+    else:
+        int_min_self = int_min
+        int_max_self = int_max
+    signal = pd.DataFrame(device['depth'].iloc[int_min_self:int_max_self].copy())
+    signal['curve'] = device[str(n_izm) + '_diff_result'].iloc[int_min_self:int_max_self].copy()
     signal = signal.reset_index(drop=True)
     max_depth = signal['depth'].max()
     min_depth = signal['depth'].min()
@@ -1350,6 +1478,8 @@ def draw_total_cement(device, n_izm, n_graph, fig, count_sig):
     max_cement = max_value + (10 * (max_value - min_value) / 100)
     defect1 = min_value + (max_value - min_value) / 3
     defect2 = min_value + (2 * (max_value - min_value) / 3)
+    # defect1 = 1
+    # defect2 = 5
     signal['quality'] = 0
     begin = []
     end = []
@@ -1494,15 +1624,34 @@ def open_options():
     calc()
     calc_int_cement()
     cement_sig['corr_sig'] = load_options['signal']
-    ui.spinBox_min_cement.setValue(load_options['spinBox_min_cement'])
-    ui.spinBox_max_cement.setValue(load_options['spinBox_max_cement'])
+    ui.doubleSpinBox_min_cement.setValue(load_options['doubleSpinBox_min_cement'])
+    ui.doubleSpinBox_max_cement.setValue(load_options['doubleSpinBox_max_cement'])
     ui.doubleSpinBox_defect1.setValue(load_options['doubleSpinBox_defect1'])
     ui.doubleSpinBox_defect2.setValue(load_options['doubleSpinBox_defect2'])
     ui.checkBox_corr_mode.setCheckState(2)
 
 
+def set_int(tab):
+    ui.doubleSpinBox_int_max.setMaximum(tab['depth'].max())  # устанавливаем в спинбоксы интервала сигнала
+    ui.doubleSpinBox_int_min.setMaximum(tab['depth'].max())  # максимально допустимые значения из файла
+    ui.doubleSpinBox_int_max.setValue(tab['depth'].max())  # устанавливаем в спинбоксы значения мин и макс
+    ui.doubleSpinBox_int_min.setValue(tab['depth'].min())
+
+
+def calc_max_int(tab1, tab2, i):
+    if tab2['max_h'][i] < ui.doubleSpinBox_int_max.value():
+        res = tab1.index[tab1['depth'] == get_nearest_value(tab1['depth'], tab2['max_h'][i])].tolist()[0]
+        return res
+    else:
+        res = tab1.index[tab1['depth'] == get_nearest_value(tab1['depth'],
+                                                                ui.doubleSpinBox_int_max.value())].tolist()[0]
+        return res
+
+
 ui.Button_direct.clicked.connect(open_dir)
 ui.Button_direct_old.clicked.connect(open_dir_old)
+ui.Button_open_sig.clicked.connect(open_sig)
+ui.Button_open_sig_old.clicked.connect(open_sig_old)
 
 ui.checkBox_signal1.stateChanged.connect(choice_signal)
 ui.checkBox_signal2.stateChanged.connect(choice_signal)
@@ -1582,6 +1731,8 @@ ui.doubleSpinBox_x2_line.valueChanged.connect(check_int_corr)
 ui.doubleSpinBox_y_line.valueChanged.connect(draw_cement)
 ui.pushButton_corr_sig.clicked.connect(corr_sig)
 ui.pushButton_corr_sig_bottom.clicked.connect(corr_sig_bottom)
+ui.pushButton_fix_corr.clicked.connect(fix_corr)
+ui.pushButton_plus_func.clicked.connect(plus_func)
 
 ui.doubleSpinBox_undefine_min.valueChanged.connect(check_int_undefine)
 ui.doubleSpinBox_undefine_max.valueChanged.connect(check_int_undefine)
@@ -1600,5 +1751,4 @@ ui.pushButton_choice_cement.clicked.connect(choice_cement)
 
 ui.checkBox_background_white.stateChanged.connect(background_white)
 
-# app.exec_()
 sys.exit(app.exec_())
