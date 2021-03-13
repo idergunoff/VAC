@@ -13,6 +13,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
+from scipy import stats as st
 
 from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication, QFileDialog, QCheckBox
@@ -40,6 +41,7 @@ all_stat_old = pd.DataFrame(index=list(range(1, 16)), columns=columns)
 int_undefine_cement = []
 ui.dateEdit.setDate(datetime.datetime.today() - datetime.timedelta(days=1))
 name_izm = ['55-1', '53-1', '25-1', '23-1', '55-2', '53-2', '25-2', '23-2', '55-3', '53-3', '25-3', '23-3']
+k_oldtonew = 1
 
 
 def open_dir():
@@ -52,6 +54,11 @@ def open_dir():
     dir_name = QFileDialog.getExistingDirectory()  # окно выбора папки
     all_files = list()
     n = 1
+    checkboxes = ui.new_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        item.setEnabled(False)
+        item.setCheckState(0)
+        item.setStyleSheet('background: #f0f0f0')
     for dir_i in os.walk(dir_name):  # перебор директорий
         for file in sorted(dir_i[-1], reverse=True):  # перебор файлов в директории с обратной сортировкой
             if file.endswith('_5150m_c.lvm'):  # выбраем и заносим в список только файлы с расширением *.lvm
@@ -113,6 +120,11 @@ def open_dir_old():
     ui.label_info.setStyleSheet('color:blue')
     all_signals_old = pd.DataFrame()  # при открытии новой директории таблица all_signals_old очищается
     dir_name = QFileDialog.getExistingDirectory()  # окно выбора папки
+    checkboxes = ui.old_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        item.setEnabled(False)
+        item.setCheckState(0)
+        item.setStyleSheet('background: #f0f0f0')
     all_files = list()
     n = 1
     for file in os.listdir(dir_name):  # перебор файлов в папке
@@ -125,7 +137,7 @@ def open_dir_old():
             signal = struct.unpack(uiat_b, signal_b)      # пересчет байтов в кортеж сигнала
             f.close()  # закрываем файл
             max_gl = len_signal*0.515
-            if n == 1:  # первый файл записываем в шум и создаем колонку с глубиной :todo
+            if n == 1:  # первый файл записываем в шум и создаем колонку с глубиной
                 signal_f = interp1d(np.linspace(0, max_gl, len_signal, endpoint=True), signal, kind='linear')
                 all_signals_old['depth'] = np.arange(0, max_gl, 0.05839)  # шкала глубин через 0.515 метров
                 all_signals_old['noise'] = signal_f(all_signals_old['depth'])
@@ -133,16 +145,15 @@ def open_dir_old():
                 signal_f = interp1d(np.linspace(0, max_gl, len_signal, endpoint=True), signal, kind='linear')
                 all_signals_old[n-1] = signal_f(all_signals_old['depth'])
                 all_stat_old['name'][n-1] = file  # записываем названия файлов в таблицу статистики
+                all_stat_old['max_h'][n-1] = max_gl
             n += 1
             if n == 14:     # если считано 13 файлов выходим из цикла
                 break
-    print(all_signals_old)
     col_max = all_signals_old.columns[all_signals_old.loc[0] == all_signals_old.loc[0].max()].tolist()[0]
     k_oldtonew = all_signals_old[col_max].max()/5
     all_signals_old['noise'] = all_signals_old['noise']/k_oldtonew
     for i in range(1, len(all_signals_old.loc[0])-1):
         all_signals_old[i] = all_signals_old[i]/k_oldtonew
-    print(all_signals_old)
 
     ui.label_direct_old.setText("<b>" + dir_name + ":</b>")
     ui.label_info.setText('Загружены данные старого оборудования!')
@@ -153,7 +164,6 @@ def open_dir_old():
         if n_izm < 13:
             item.setText(str(n_izm)+' '+all_files[n_izm][0:7])   # присваиваем чекбоксам названия файлов - первые 7 символов
             item.setEnabled(True)
-
     ui.checkBox_noise_old.setText(all_files[0][0:7])
     ui.checkBox_noise_old.setEnabled(True)
     ui.pushButton_sum1_old.setEnabled(True)
@@ -180,25 +190,19 @@ def open_sig():
         all_signals = pd.DataFrame()
         for item in checkboxes:
             item.setEnabled(False)
-            item.setStyleSheet('background: white')
-        ui.pushButton_sum1.setEnabled(False)
-        ui.pushButton_sum2.setEnabled(False)
-        ui.pushButton_sum3.setEnabled(False)
+            item.setCheckState(0)
+            item.setStyleSheet('background: #f0f0f0')
+    if n_chek > 0:
+        ui.pushButton_sum1.setEnabled(True)
+        ui.pushButton_sum2.setEnabled(True)
+        ui.pushButton_sum3.setEnabled(True)
     signal = pd.read_table(file_name[0], delimiter='\t', header=None)  # считываем таблицу
     if 'depth' in all_signals:
         if all_signals['depth'].max() < signal[1].max():
-            ui.progressBar.setMaximum(len(signal[1])-len(all_signals['depth']))
-            pb = 1
-            ui.label_info.setText('Загружаемый сигнал больше загруженных ранее, наращиваем таблицу...')
-            ui.label_info.setStyleSheet('color:blue')
-            while len(all_signals['depth']) < len(signal[1]):
-                all_signals.loc[len(all_signals['depth'])] = np.NaN
-                ui.progressBar.setValue(pb)
-                pb += 1
+            add_tab = pd.DataFrame(columns=all_signals.columns, index=range(len(all_signals['depth']), len(signal[1])))
+            all_signals = pd.concat([all_signals, add_tab])
             all_signals['depth'] = signal[1]
             set_int(all_signals)
-            ui.label_info.setText('Готово!')
-            ui.label_info.setStyleSheet('color:green')
     else:
         all_signals['depth'] = signal[1]
         set_int(all_signals)
@@ -212,24 +216,71 @@ def open_sig():
             n_max.append(int(len(all_signals[n_sig])) - 1)
             max_x = all_signals.loc[n_max, 'depth']  # выбираем x и y максимумов
             max_y = all_signals.loc[n_max, n_sig]
-            envelope = interp1d(max_x, max_y, kind='linear')  # выполняем интерполяцию по максимуму, получая огибающую
+            envelope = interp1d(max_x, max_y, kind='linear', bounds_error=False)  # выполняем интерполяцию по максимуму, получая огибающую
             all_signals[str(n_sig) + '_envelope'] = envelope(all_signals['depth'])
             all_signals[str(n_sig) + '_envelope'] = all_signals[str(n_sig) + '_envelope'].rolling(80, min_periods=1,
                                                                                   center=True).mean()  # усреднение
             all_stat['name'][n_sig] = item.text()
             all_stat['max_h'][n_sig] = signal[1].max()
             item.setEnabled(True)
-            item.setCheckState(2)
             calc_to_int()
+            item.setCheckState(2)
             break
 
 
 def open_sig_old():
-    global all_signals_old
+    global all_signals_old, k_oldtonew
+    file_name = QFileDialog.getOpenFileName(filter='*.TWF')
     checkboxes = ui.old_device.findChildren(QCheckBox)
+    n_chek = 0
+    for item in checkboxes:
+        if item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15]:
+            n_chek += 1
+    if n_chek == 12:
+        all_signals_old = pd.DataFrame()
+        for item in checkboxes:
+            item.setEnabled(False)
+            item.setCheckState(0)
+            item.setStyleSheet('background: #f0f0f0')
+    if n_chek > 0:
+        ui.pushButton_sum1_old.setEnabled(True)
+        ui.pushButton_sum2_old.setEnabled(True)
+        ui.pushButton_sum3_old.setEnabled(True)
+    f = open(file_name[0], 'rb')  # открываем бинарный файл для чтения
+    signal_b = f.read()[130:]  # считываем байты кроме первых 130
+    len_signal = int(len(signal_b) / 4)  # количество чисел
+    uiat_b = '<' + str(len_signal) + 'i'  # формат файла для чтения
+    signal = struct.unpack(uiat_b, signal_b)  # пересчет байтов в кортеж сигнала
+    f.close()  # закрываем файл
+    max_gl = len_signal * 0.515
+
+    if 'depth' in all_signals_old:
+        if all_signals_old['depth'].max() + 0.515 < max_gl:
+            add_tab = pd.DataFrame(columns=all_signals_old.columns, index=range(len(all_signals_old['depth']),
+                                                                                int(max_gl/0.05839)+1))
+            all_signals_old = pd.concat([all_signals_old, add_tab])
+            all_signals_old['depth'] = np.arange(0, max_gl, 0.05839)  # шкала глубин через 0.05839 метров
+            set_int(all_signals_old)
+    else:
+        all_signals_old['depth'] = np.arange(0, max_gl, 0.05839)
+        set_int(all_signals_old)
     for item in checkboxes:
         if not item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15]:
-            print(item.text())
+            n_sig = int(item.text()[0:2])
+            item.setText(str(n_sig) + ' ' + file_name[0].split('/')[-1])
+            signal_f = interp1d(np.linspace(0, max_gl, len_signal), signal, kind='linear', bounds_error=False)
+            all_signals_old[n_sig] = signal_f(all_signals_old['depth'])
+            all_stat_old['name'][n_sig] = item.text()
+            all_stat_old['max_h'][n_sig] = max_gl
+
+            if k_oldtonew == 1:
+                k_oldtonew = all_signals_old[n_sig].max() / 5
+            all_signals_old[n_sig] = all_signals_old[n_sig] / k_oldtonew
+
+            item.setEnabled(True)
+            calc_to_int_old()
+            item.setCheckState(2)
+            break
 
 
 def calc_to_int():
@@ -286,6 +337,8 @@ def calc_to_int():
                 all_signals[str(i) + '_diff_norm-1'] = all_signals[str(i) + '_diff_norm'].shift(-1)  # сдвиг
                 all_signals[str(i) + '_diff_result'] = (all_signals[str(i) + '_diff_norm-1'] + all_signals[
                     str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+                all_signals.at[int_max, str(i) + '_diff_result'] = all_signals.at[int_max-2, str(i) + '_diff_result']
+                all_signals.at[int_max-1, str(i) + '_diff_result'] = all_signals.at[int_max-2, str(i) + '_diff_result']
 
                 std_25 = all_signals[str(i) + '_envelope'].iloc[-430:].std()  #стандартное отклонение по последним 25 метрам
                 for n, k in enumerate(all_signals[str(i) + '_mean'].iloc[int_min:int_max]):
@@ -303,12 +356,13 @@ def calc_to_int():
                              '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][n_izm], 2))+
                              ' м\nМакс/Мин - '+str(round(all_stat['max_min'][n_izm], 3)))
             item.setStyleSheet(k_damp_detect('new', n_izm))
-
+    calc_defect_to_tab(all_signals, True)
     all_signals.to_csv('result.txt', sep='\t')
     all_stat.to_csv('all_stat.txt', sep='\t')
     ui.label_info.setText('Готово!')
     ui.label_info.setStyleSheet('color:green')
     choice_signal()
+    all_signals.to_csv('all_signals.txt', sep='\t')
 
 
 def calc_to_int_old():
@@ -330,62 +384,66 @@ def calc_to_int_old():
     ui.label_info.setStyleSheet('color:blue')
 
     for i in range(1, 16):
-        if all_signals_old[i][1] != 0:
-            max_min = all_signals_old[i].iloc[int_min_old:int_max_old].max() / \
-                      all_signals_old[i].iloc[int_min_old:int_max_old].min()
-            all_stat_old['max_min'][i] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
-            all_signals_old[str(i) + '-1'] = all_signals_old[i].shift(-1)  # сдвиг огибающ сигнала на 1
-            all_signals_old[str(i) + '_mean'] = all_signals_old[i].rolling(mean_win, min_periods=1, center=True).mean()
-            all_signals_old[str(i) + '_norm'] = all_signals_old[i] / (all_signals_old[str(i) + '_mean'] + coeff_norm)
-            # расчет цементограммы по усредняющей с коэффициентом
-            popt, pcov = curve_fit(func1, all_signals_old['depth'].iloc[int_min_old:int_max_old],
-                               all_signals_old[i].iloc[int_min_old:int_max_old])    # расчет коэф для функции
-            all_stat_old['coeff_A'][i] = popt[0]
-            all_stat_old['coeff_B'][i] = popt[1]
-            all_signals_old[str(i) + '_func'] = func1(all_signals_old['depth'], popt[0], popt[1]) + coeff_func
-            # построение фунции в интервале сигнала со сдвигом по Y на coeff_func
-            """Расчет коэффициента затухания"""
-            all_signals_old[str(i) + '_func_kdamp'] = all_signals_old[str(i) + '_func'][0] / \
-                                                      all_signals_old[str(i) + '_func']
-            i_kdamp = all_signals_old.index[
-                all_signals_old[str(i) + '_func_kdamp'] == get_nearest_value(all_signals_old[str(i) + '_func_kdamp'],
-                                                                         np.exp(1))].tolist()[0]
-            all_stat_old['k_damp'][i] = 0.2029 * np.log(np.exp(1) / all_signals_old['depth'][i_kdamp]) + 0.9127
-            all_stat_old['k_damp'][i] = np.exp(1) / all_signals_old['depth'][i_kdamp]
-            all_signals_old[str(i) + '_rel_ampl'] = (all_signals_old[str(i) + '-1'] -  # расчет цементограммы по функции
-                                                     all_signals_old[str(i) + '_func']) / all_signals_old[str(i) + '-1']
-            all_signals_old[str(i) + '_mean-1'] = all_signals_old[str(i) + '_mean'].shift(-1)
-                                                                                        # сдвиг усредненного сигнала
-            all_signals_old[str(i) + '_diff_norm'] = (all_signals_old[str(i) + '_mean-1'] -  # нормированная производная
-                                                  all_signals_old[str(i) + '_mean']) / all_signals_old[str(i) + '_mean']
-            all_signals_old[str(i) + '_diff_norm-1'] = all_signals_old[str(i) + '_diff_norm'].shift(-1)  # сдвиг
-            all_signals_old[str(i) + '_diff_result'] = (all_signals_old[str(i) + '_diff_norm-1'] + all_signals_old[
-                str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+        if i in all_signals_old.columns:
+            if all_signals_old[i][1] != 0:
+                int_max_old = calc_max_int(all_signals_old, all_stat_old, i)
+                max_min = all_signals_old[i].iloc[int_min_old:int_max_old].max() / \
+                          all_signals_old[i].iloc[int_min_old:int_max_old].min()
+                all_stat_old['max_min'][i] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
+                all_signals_old[str(i) + '-1'] = all_signals_old[i].shift(-1)  # сдвиг огибающ сигнала на 1
+                all_signals_old[str(i) + '_mean'] = all_signals_old[i].rolling(mean_win, min_periods=1, center=True).mean()
+                all_signals_old[str(i) + '_norm'] = all_signals_old[i] / (all_signals_old[str(i) + '_mean'] + coeff_norm)
+                # расчет цементограммы по усредняющей с коэффициентом
+                popt, pcov = curve_fit(func1, all_signals_old['depth'].iloc[int_min_old:int_max_old],
+                                   all_signals_old[i].iloc[int_min_old:int_max_old])    # расчет коэф для функции
+                all_stat_old['coeff_A'][i] = popt[0]
+                all_stat_old['coeff_B'][i] = popt[1]
+                all_signals_old[str(i) + '_func'] = func1(all_signals_old['depth'], popt[0], popt[1]) + coeff_func
+                # построение фунции в интервале сигнала со сдвигом по Y на coeff_func
+                """Расчет коэффициента затухания"""
+                all_signals_old[str(i) + '_func_kdamp'] = all_signals_old[str(i) + '_func'][0] / \
+                                                          all_signals_old[str(i) + '_func']
+                i_kdamp = all_signals_old.index[
+                    all_signals_old[str(i) + '_func_kdamp'] == get_nearest_value(all_signals_old[str(i) + '_func_kdamp'],
+                                                                             np.exp(1))].tolist()[0]
+                all_stat_old['k_damp'][i] = 0.2029 * np.log(np.exp(1) / all_signals_old['depth'][i_kdamp]) + 0.9127
+                all_stat_old['k_damp'][i] = np.exp(1) / all_signals_old['depth'][i_kdamp]
+                all_signals_old[str(i) + '_rel_ampl'] = (all_signals_old[str(i) + '-1'] -  # расчет цементограммы по функции
+                                                         all_signals_old[str(i) + '_func']) / all_signals_old[str(i) + '-1']
+                all_signals_old[str(i) + '_mean-1'] = all_signals_old[str(i) + '_mean'].shift(-1)
+                                                                                            # сдвиг усредненного сигнала
+                all_signals_old[str(i) + '_diff_norm'] = (all_signals_old[str(i) + '_mean-1'] -  # нормированная производная
+                                                      all_signals_old[str(i) + '_mean']) / all_signals_old[str(i) + '_mean']
+                all_signals_old[str(i) + '_diff_norm-1'] = all_signals_old[str(i) + '_diff_norm'].shift(-1)  # сдвиг
+                all_signals_old[str(i) + '_diff_result'] = (all_signals_old[str(i) + '_diff_norm-1'] + all_signals_old[
+                    str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+                all_signals_old.at[int_max_old, str(i) + '_diff_result'] = all_signals_old.at[int_max_old - 2, str(i) + '_diff_result']
+                all_signals_old.at[int_max_old - 1, str(i) + '_diff_result'] = all_signals_old.at[
+                    int_max_old - 2, str(i) + '_diff_result']
 
-            std_25 = all_signals_old[i].iloc[-50:].std()  # стандартное отклонение по последним 25 метрам
-            for n, k in enumerate(all_signals_old[str(i) + '_mean'].iloc[int_min_old:int_max_old]):
-                if k <= std_25 + all_signals_old[str(i) + '_mean'].iloc[int_min_old:int_max_old].min():
-                    useful_depth = all_signals_old['depth'][n]
-                    all_stat_old['useful_depth'][i] = useful_depth
-                    break
-            ui.progressBar.setValue(i)
+                std_25 = all_signals_old[i].iloc[-50:].std()  # стандартное отклонение по последним 25 метрам
+                for n, k in enumerate(all_signals_old[str(i) + '_mean'].iloc[int_min_old:int_max_old]):
+                    if k <= std_25 + all_signals_old[str(i) + '_mean'].iloc[int_min_old:int_max_old].min():
+                        useful_depth = all_signals_old['depth'][n]
+                        all_stat_old['useful_depth'][i] = useful_depth
+                        break
+                ui.progressBar.setValue(i)
     # расчет рекомендуемого окна усреднения по формуле из Щелкуна, установка значения в спинбок
-
-    print(all_stat_old)
-    print(all_signals_old)
     checkboxes = ui.old_device.findChildren(QCheckBox)
     for item in checkboxes:
-        n_izm = int(item.text()[0:2])
-        item.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][n_izm], 3)) +
-                         '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][n_izm], 2)) +
-                         ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][n_izm], 3)))
-        item.setStyleSheet(k_damp_detect('old', n_izm))
-
+        if item.isEnabled():
+            n_izm = int(item.text()[0:2])
+            item.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][n_izm], 3)) +
+                             '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][n_izm], 2)) +
+                             ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][n_izm], 3)))
+            item.setStyleSheet(k_damp_detect('old', n_izm))
+    calc_defect_to_tab(all_signals_old, True)
     ui.label_info.setText('Готово!')
     ui.label_info.setStyleSheet('color:green')
     all_signals_old.to_csv('result_old.txt', sep='\t')
     all_stat_old.to_csv('all_stat_old.txt', sep='\t')
     choice_signal()
+    all_signals_old.to_csv('all_signals_old.txt', sep='\t')
 
 
 def calc():
@@ -393,6 +451,119 @@ def calc():
         calc_to_int()
     if ui.checkBox_signal_old_1.isEnabled():
         calc_to_int_old()
+
+
+def calc_defect_to_tab(device, uniq_qual):
+    if device is all_signals_old:
+        int_min_self = int_min_old
+        int_max_self = int_max_old
+        c_sig = create_list_sig('old')
+    else:
+        int_min_self = int_min
+        int_max_self = int_max
+        c_sig = create_list_sig('new')
+    list_def1, list_def2 = [], []
+    if uniq_qual:
+        for n_sig in c_sig:
+            min_value = device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self].min()
+            max_value = device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self].max()
+            def1 = min_value + (max_value - min_value) / 3
+            def2 = min_value + (2 * (max_value - min_value) / 3)
+            device[str(n_sig) + '_quality'] = [0]*int_min_self + \
+                calc_defect(device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self], def1, def2) + \
+                                              [0]*(len(device['depth']) - int_max_self)
+            if device is all_signals:
+                if n_sig not in [9, 10, 11]:
+                    list_def1.append(def1)
+                    list_def2.append(def2)
+            else:
+                if n_sig not in [13, 14, 15]:
+                    list_def1.append(def1)
+                    list_def2.append(def2)
+        mean_def1 = np.mean(list_def1)
+        mean_def2 = np.mean(list_def2)
+        if device is all_signals:
+            ui.doubleSpinBox_defect1_new.setValue(mean_def1)
+            ui.doubleSpinBox_defect2_new.setValue(mean_def2)
+        else:
+            ui.doubleSpinBox_defect1_old.setValue(mean_def1)
+            ui.doubleSpinBox_defect2_old.setValue(mean_def2)
+    else:
+        if device is all_signals:
+            mean_def1 = ui.doubleSpinBox_defect1_new.value()
+            mean_def2 = ui.doubleSpinBox_defect2_new.value()
+        else:
+            mean_def1 = ui.doubleSpinBox_defect1_old.value()
+            mean_def2 = ui.doubleSpinBox_defect2_old.value()
+    for n_sig in c_sig:
+        device[str(n_sig) + '_qual_mean'] = [0]*int_min_self + \
+            calc_defect(device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self], mean_def1, mean_def2) + \
+                                          [0]*(len(device['depth']) - int_max_self)
+    match_defect(device)
+
+
+def recalc_qual_new():
+    calc_defect_to_tab(all_signals, False)
+
+
+def recalc_qual_old():
+    calc_defect_to_tab(all_signals_old, False)
+
+
+def calc_defect(input_list_1, defect1, defect2):
+    """ Функция расчета интервалов дефектов. Принимает сигнал и 2 уровня девектов """
+    input_list = input_list_1.tolist()
+    l_list = len(input_list)
+    quality = [0]*l_list
+    begin = []
+    end = []
+    try:
+        if input_list[0] > defect1:
+            begin.append(0)
+        for n, i in enumerate(input_list):
+            if 0 < n < (l_list - 1):
+                if i >= defect1:
+                    if input_list[n - 1] < defect1:
+                        begin.append(n)
+                    if input_list[n + 1] < defect1:
+                        end.append(n + 1)
+        if input_list[l_list - 1] >= defect1:
+            end.append(l_list)
+        for i in range(len(begin)):
+            if np.max(input_list[begin[i]:end[i]]) >= defect2:
+                quality[begin[i]:end[i]] = [2]*len(quality[begin[i]:end[i]])
+            else:
+                quality[begin[i]:end[i]] = [1]*len(quality[begin[i]:end[i]])
+        for i in int_undefine_cement:
+            quality[i[0]:i[1]] = [3]*len(quality[i[0]:i[1]])
+    except IndexError:
+        ui.label_info.setText('Ошибка расчета интервалов дефектов. Поробуйте уменьшить максимальную глубину. '
+                                'Например на 1 метр.')
+        ui.label_info.setStyleSheet('color:red')
+    return quality
+
+
+def match_defect(device):
+    """ Расчет процента совпадений дефектов """
+    list_match_uniq = []
+    list_match_mean = []
+    if device is all_signals:
+        list_sig = create_list_sig('new')
+    else:
+        list_sig = create_list_sig('old')
+    remove_sum(device, list_sig)
+    for row in range(len(device['depth'])):
+        sel_mean = 0
+        sel_uniq = 0
+        for n_izm in list_sig:
+            if device[str(n_izm) + '_quality'][row] > 0:
+                sel_uniq += 1
+            if device[str(n_izm) + '_qual_mean'][row] > 0:
+                sel_mean += 1
+        list_match_uniq.append((sel_uniq/len(list_sig))*10-5)
+        list_match_mean.append((sel_mean / len(list_sig))*10-5)
+    device['match_def_uniq'] = list_match_uniq
+    device['match_def_mean'] = list_match_mean
 
 
 def choice_signal():
@@ -463,6 +634,33 @@ def choice_signal():
                                y=all_signals_old['noise'].iloc[int_min_old:int_max_old].tolist(),
                                pen=pg.mkPen(color='c', dash=[2, 1, 4], width=1))
 
+    if ui.checkBox_pdf.checkState() == 2:
+        ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
+                             y=all_signals['pdf_envelope'].iloc[int_min:int_max].tolist(),
+                             pen=pg.mkPen(color='#9CCC00', width=2.5, dash=[2, 2]))
+    if ui.checkBox_pdf_old.checkState() == 2:
+        ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
+                             y=all_signals_old['pdf'].iloc[int_min_old:int_max_old].tolist(),
+                             pen=pg.mkPen(color='#11CC00', width=2.5, dash=[2, 2]))
+    if ui.checkBox_match_def_new.checkState() == 2:
+        if ui.checkBox_gen_def_new.checkState() == 2:
+            ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
+                                 y=all_signals['match_def_mean'].iloc[int_min:int_max].tolist(),
+                                 pen=pg.mkPen(color='#1FFFEF', width=2.5, dash=[2, 2]))
+        else:
+            ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
+                                 y=all_signals['match_def_uniq'].iloc[int_min:int_max].tolist(),
+                                 pen=pg.mkPen(color='#1FFFEF', width=2.5, dash=[2, 2]))
+    if ui.checkBox_match_def_old.checkState() == 2:
+        if ui.checkBox_gen_def_old.checkState() == 2:
+            ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
+                                 y=all_signals_old['match_def_mean'].iloc[int_min_old:int_max_old].tolist(),
+                                 pen=pg.mkPen(color='#1FFFB6', width=2.5, dash=[2, 2]))
+        else:
+            ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
+                                 y=all_signals_old['match_def_uniq'].iloc[int_min_old:int_max_old].tolist(),
+                                 pen=pg.mkPen(color='#1FFFB6', width=2.5, dash=[2, 2]))
+
 
 def plot_graph(n_sig, sig_width, sig_dash, color):
     """
@@ -514,26 +712,32 @@ def plot_graph_old(n_sig, sig_width, sig_dash, color):
     """
     ui.graphicsView.showGrid(x=True, y=True)  # грид-сетка
     if ui.checkBox_envelop_old.checkState() == 2:
+        int_max_old = calc_max_int(all_signals_old, all_stat_old, n_sig)
         ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
                                y=all_signals_old[n_sig].iloc[int_min_old:int_max_old].tolist(),
                                pen=pg.mkPen(color=(255, 0, color), width=sig_width, dash=sig_dash))
     if ui.checkBox_func_old.checkState() == 2:
+        int_max_old = calc_max_int(all_signals_old, all_stat_old, n_sig)
         ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
                                y=all_signals_old[str(n_sig) + '_func'].iloc[int_min_old:int_max_old].tolist(),
                                pen=pg.mkPen(color=(0, 255, color), width=sig_width, dash=sig_dash))
     if ui.checkBox_mean_old.checkState() == 2:
+        int_max_old = calc_max_int(all_signals_old, all_stat_old, n_sig)
         ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
                                y=all_signals_old[str(n_sig) + '_mean'].iloc[int_min_old:int_max_old].tolist(),
                                pen=pg.mkPen(color=(100, 100, 255 - color), width=sig_width, dash=sig_dash))
     if ui.checkBox_norm_old.checkState() == 2:
+        int_max_old = calc_max_int(all_signals_old, all_stat_old, n_sig)
         ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
                                y=all_signals_old[str(n_sig) + '_norm'].iloc[int_min_old:int_max_old].tolist(),
                                pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))
     if ui.checkBox_rel_ampl_old.checkState() == 2:
+        int_max_old = calc_max_int(all_signals_old, all_stat_old, n_sig)
         ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
                                y=all_signals_old[str(n_sig) + '_rel_ampl'].iloc[int_min_old:int_max_old].tolist(),
                                pen=pg.mkPen(color='c', width=sig_width, dash=sig_dash))
     if ui.checkBox_diff_result_old.checkState() == 2:
+        int_max_old = calc_max_int(all_signals_old, all_stat_old, n_sig)
         ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
                                y=all_signals_old[str(n_sig) + '_diff_result'].iloc[int_min_old:int_max_old].tolist(),
                                pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))
@@ -558,7 +762,9 @@ def change_mean_win():
                 all_signals[str(i) + '_diff_norm-1'] = all_signals[str(i) + '_diff_norm'].shift(-1)
                 all_signals[str(i) + '_diff_result'] = (all_signals[str(i) + '_diff_norm-1'] + all_signals[
                     str(i) + '_diff_norm']) * coeff_dif_res
-
+                all_signals.at[int_max, str(i) + '_diff_result'] = all_signals.at[int_max - 2, str(i) + '_diff_result']
+                all_signals.at[int_max - 1, str(i) + '_diff_result'] = all_signals.at[
+                    int_max - 2, str(i) + '_diff_result']
     all_signals.to_csv('result.txt', sep='\t')
     choice_signal()
 
@@ -572,17 +778,20 @@ def change_mean_win_old():
     mean_win = ui.spinBox_mean_win_old.value()
 
     for i in range(1, 16):
-        if all_signals_old[i][1] != 0:
-            all_signals_old[str(i) + '_mean'] = all_signals_old[i].rolling(mean_win, min_periods=1, center=True).mean()
-            all_signals_old[str(i) + '_norm'] = all_signals_old[i] / (all_signals_old[str(i) + '_mean'] + coeff_norm)
-
-
-            all_signals_old[str(i) + '_mean-1'] = all_signals_old[str(i) + '_mean'].shift(-1)  # сдвиг усредненного сигнала
-            all_signals_old[str(i) + '_diff_norm'] = (all_signals_old[str(i) + '_mean-1'] -  # нормированная производная
-                                                      all_signals_old[str(i) + '_mean']) / all_signals_old[str(i) + '_mean']
-            all_signals_old[str(i) + '_diff_norm-1'] = all_signals_old[str(i) + '_diff_norm'].shift(-1)  # сдвиг
-            all_signals_old[str(i) + '_diff_result'] = (all_signals_old[str(i) + '_diff_norm-1'] + all_signals_old[
-                str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+        if i in all_signals_old.columns:
+            if all_signals_old[i][1] != 0:
+                all_signals_old[str(i) + '_mean'] = all_signals_old[i].rolling(mean_win, min_periods=1, center=True).mean()
+                all_signals_old[str(i) + '_norm'] = all_signals_old[i] / (all_signals_old[str(i) + '_mean'] + coeff_norm)
+                all_signals_old[str(i) + '_mean-1'] = all_signals_old[str(i) + '_mean'].shift(-1)  # сдвиг усредненного сигнала
+                all_signals_old[str(i) + '_diff_norm'] = (all_signals_old[str(i) + '_mean-1'] -  # нормированная производная
+                                                          all_signals_old[str(i) + '_mean']) / all_signals_old[str(i) + '_mean']
+                all_signals_old[str(i) + '_diff_norm-1'] = all_signals_old[str(i) + '_diff_norm'].shift(-1)  # сдвиг
+                all_signals_old[str(i) + '_diff_result'] = (all_signals_old[str(i) + '_diff_norm-1'] + all_signals_old[
+                    str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+                all_signals_old.at[int_max_old, str(i) + '_diff_result'] = all_signals_old.at[
+                    int_max_old - 2, str(i) + '_diff_result']
+                all_signals_old.at[int_max_old - 1, str(i) + '_diff_result'] = all_signals_old.at[
+                    int_max_old - 2, str(i) + '_diff_result']
 
     all_signals_old.to_csv('result_old.txt', sep='\t')
     choice_signal()
@@ -618,10 +827,11 @@ def change_func_old():
     kA = ui.doubleSpinBox_kA_old.value()
     kB = ui.doubleSpinBox_kB_old.value()
     for i in range(1, 16):
-        if all_signals_old[i][1] != 0:
-            all_signals_old[str(i) + '_func'] = func1(all_signals_old['depth'], all_stat_old['coeff_A'][i]+kA, all_stat_old['coeff_B'][i]+kB) + coeff_func
-            all_signals_old[str(i) + '_rel_ampl'] = (all_signals_old[str(i) + '-1'] - all_signals_old[str(i) + '_func']) / \
-                                                    all_signals_old[str(i) + '-1']  # расчет цементограммы по функции
+        if i in all_signals_old.columns:
+            if all_signals_old[i][1] != 0:
+                all_signals_old[str(i) + '_func'] = func1(all_signals_old['depth'], all_stat_old['coeff_A'][i]+kA, all_stat_old['coeff_B'][i]+kB) + coeff_func
+                all_signals_old[str(i) + '_rel_ampl'] = (all_signals_old[str(i) + '-1'] - all_signals_old[str(i) + '_func']) / \
+                                                        all_signals_old[str(i) + '-1']  # расчет цементограммы по функции
     choice_signal()
 
 
@@ -638,37 +848,38 @@ def get_nearest_value(iterable, value):
 
 def sum_signals(n_sum):
     n_signals = 0
+    max_h = 0
+    result_sum = False
     all_signals[str(n_sum) + '_envelope'] = 0
-    if ui.checkBox_signal1.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['1_envelope']
-        n_signals += 1
-    if ui.checkBox_signal2.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['2_envelope']
-        n_signals += 1
-    if ui.checkBox_signal3.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['3_envelope']
-        n_signals += 1
-    if ui.checkBox_signal4.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['4_envelope']
-        n_signals += 1
-    if ui.checkBox_signal5.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['5_envelope']
-        n_signals += 1
-    if ui.checkBox_signal6.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['6_envelope']
-        n_signals += 1
-    if ui.checkBox_signal7.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['7_envelope']
-        n_signals += 1
-    if ui.checkBox_signal8.checkState() == 2:
-        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals['8_envelope']
-        n_signals += 1
+    checkboxes = ui.new_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        if item.isEnabled() and int(item.text()[0:2]) not in [9, 10, 11]:
+            if item.checkState() == 2:
+                n_izm = int(item.text()[0:2])
+                if max_h == 0:
+                    max_h = all_stat['max_h'][n_izm]
+                    all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals[
+                        str(n_izm) + '_envelope']
+                    n_signals += 1
+                else:
+                    if max_h != all_stat['max_h'][n_izm]:
+                        n_signals = 0
+                        ui.label_info.setText('Ошибка сложения! Нельзя сложить сигналы разной длины.')
+                        ui.label_info.setStyleSheet('color:red')
+                        break
+                    else:
+                        all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope'] + all_signals[
+                            str(n_izm) + '_envelope']
+                        n_signals += 1
+
     if n_signals != 0:
         all_signals[str(n_sum) + '_envelope'] = all_signals[str(n_sum) + '_envelope']/n_signals
         coeff_norm = ui.doubleSpinBox_coeff_norm.value()  # считываем значения коэффициентов из спинбоксов
         coeff_func = ui.doubleSpinBox_coeff_func.value()
         coeff_dif_res = ui.spinBox_coeff_dif_res.value()
         mean_win = ui.spinBox_mean_win.value()
+        all_stat['max_h'][n_sum] = max_h
+        int_max = calc_max_int(all_signals, all_stat, n_sum)
         max_min = all_signals[str(n_sum) + '_envelope'].iloc[int_min:int_max].max() / \
                   all_signals[str(n_sum) + '_envelope'].iloc[int_min:int_max].min()
         all_stat['max_min'][n_sum] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
@@ -699,64 +910,55 @@ def sum_signals(n_sum):
         all_signals[str(n_sum) + '_diff_norm-1'] = all_signals[str(n_sum) + '_diff_norm'].shift(-1)  # сдвиг
         all_signals[str(n_sum) + '_diff_result'] = (all_signals[str(n_sum) + '_diff_norm-1'] + all_signals[
             str(n_sum) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+        all_signals.at[int_max, str(n_sum) + '_diff_result'] = all_signals.at[int_max - 2, str(n_sum) + '_diff_result']
+        all_signals.at[int_max - 1, str(n_sum) + '_diff_result'] = all_signals.at[int_max - 2, str(n_sum) + '_diff_result']
         std_25 = all_signals[str(n_sum) + '_envelope'].iloc[-430:].std()  # стандартное отклонение по последним 25 метрам
         for n, k in enumerate(all_signals[str(n_sum) + '_mean'].iloc[int_min:int_max]):
             if k <= std_25 + all_signals[str(n_sum) + '_mean'].iloc[int_min:int_max].min():
                 useful_depth = all_signals['depth'][n]
                 all_stat['useful_depth'][n_sum] = useful_depth
                 break
-        print(all_stat)
-        all_signals.to_csv('result.txt', sep='\t')
+        calc_defect_to_tab(all_signals, True)
+        all_signals.to_csv('all_signals.txt', sep='\t')
         all_stat.to_csv('all_stat.txt', sep='\t')
         choice_signal()
+        ui.label_info.setText('Выполнено сложение сигналов.')
+        ui.label_info.setStyleSheet('color:green')
+        result_sum = True
+    return result_sum
 
 
 def sum_signals_old(n_sum):
     n_signals = 0
+    max_h = 0
+    result_sum = False
     all_signals_old[n_sum] = 0
-    if ui.checkBox_signal_old_1.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[1]
-        n_signals += 1
-    if ui.checkBox_signal_old_2.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[2]
-        n_signals += 1
-    if ui.checkBox_signal_old_3.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[3]
-        n_signals += 1
-    if ui.checkBox_signal_old_4.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[4]
-        n_signals += 1
-    if ui.checkBox_signal_old_5.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[5]
-        n_signals += 1
-    if ui.checkBox_signal_old_6.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[6]
-        n_signals += 1
-    if ui.checkBox_signal_old_7.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[7]
-        n_signals += 1
-    if ui.checkBox_signal_old_8.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[8]
-        n_signals += 1
-    if ui.checkBox_signal_old_9.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[8]
-        n_signals += 1
-    if ui.checkBox_signal_old_10.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[10]
-        n_signals += 1
-    if ui.checkBox_signal_old_11.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[11]
-        n_signals += 1
-    if ui.checkBox_signal_old_12.checkState() == 2:
-        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[12]
-        n_signals += 1
+    checkboxes = ui.old_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        if item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15]:
+            if item.checkState() == 2:
+                n_izm = int(item.text()[0:2])
+                if max_h == 0:
+                    max_h = all_stat_old['max_h'][n_izm]
+                    all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[n_izm]
+                    n_signals += 1
+                else:
+                    if max_h != all_stat_old['max_h'][n_izm]:
+                        n_signals = 0
+                        ui.label_info.setText('Ошибка сложения! Нельзя сложить сигналы разной длины.')
+                        ui.label_info.setStyleSheet('color:red')
+                        break
+                    else:
+                        all_signals_old[n_sum] = all_signals_old[n_sum] + all_signals_old[n_izm]
+                        n_signals += 1
     if n_signals != 0:
         all_signals_old[n_sum] = all_signals_old[n_sum]/n_signals
         coeff_norm = ui.doubleSpinBox_coeff_norm_old.value()  # считываем значения коэффициентов из спинбоксов
         coeff_func = ui.doubleSpinBox_coeff_func_old.value()
         coeff_dif_res = ui.spinBox_coeff_dif_res_old.value()
         mean_win = ui.spinBox_mean_win_old.value()
-
+        all_stat_old['max_h'][n_sum] = max_h
+        int_max_old = calc_max_int(all_signals_old, all_stat_old, n_sum)
         max_min = all_signals_old[n_sum].iloc[int_min_old:int_max_old].max() / \
                   all_signals_old[n_sum].iloc[int_min_old:int_max_old].min()
         all_stat_old['max_min'][n_sum] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
@@ -788,6 +990,10 @@ def sum_signals_old(n_sum):
         all_signals_old[str(n_sum) + '_diff_norm-1'] = all_signals_old[str(n_sum) + '_diff_norm'].shift(-1)  # сдвиг
         all_signals_old[str(n_sum) + '_diff_result'] = (all_signals_old[str(n_sum) + '_diff_norm-1'] + all_signals_old[
             str(n_sum) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
+        all_signals_old.at[int_max_old, str(n_sum) + '_diff_result'] = all_signals_old.at[
+            int_max_old - 2, str(n_sum) + '_diff_result']
+        all_signals_old.at[int_max_old - 1, str(n_sum) + '_diff_result'] = all_signals_old.at[
+            int_max_old - 2, str(n_sum) + '_diff_result']
 
         std_25 = all_signals_old[n_sum].iloc[-50:].std()  # стандартное отклонение по последним 25 метрам
         for n, k in enumerate(all_signals_old[str(n_sum) + '_mean'].iloc[int_min_old:int_max_old]):
@@ -795,125 +1001,224 @@ def sum_signals_old(n_sum):
                 useful_depth = all_signals_old['depth'][n]
                 all_stat_old['useful_depth'][n_sum] = useful_depth
                 break
-        print(all_stat)
+        calc_defect_to_tab(all_signals_old, True)
         all_signals_old.to_csv('result_old.txt', sep='\t')
         all_stat_old.to_csv('all_stat_old.txt', sep='\t')
         choice_signal()
+        ui.label_info.setText('Выполнено сложение сигналов.')
+        ui.label_info.setStyleSheet('color:green')
+        result_sum = True
+    return result_sum
 
 
 def sum1():
-    all_stat['name'][9] = text_sum()
-    sum_signals(9)
-    ui.checkBox_sum1.setText('9 '+text_sum())
-    ui.checkBox_sum1.setToolTip('Коэффициент затухания - ' + str(round(all_stat['k_damp'][9], 3)) +
-                                     '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][9], 2)) +
-                                     ' м\nМакс/Мин - ' + str(round(all_stat['max_min'][9], 3)))
-    ui.checkBox_sum1.setStyleSheet(k_damp_detect('new', 9))
+    ui.checkBox_sum1.setEnabled(False)
+    ui.checkBox_sum1.setCheckState(0)
+    ui.checkBox_sum1.setStyleSheet('background: #f0f0f0')
     ui.checkBox_sum1.setEnabled(True)
+    if sum_signals(9):
+        all_stat['name'][9] = text_sum()
+        ui.checkBox_sum1.setText('9 '+text_sum())
+        ui.checkBox_sum1.setToolTip('Коэффициент затухания - ' + str(round(all_stat['k_damp'][9], 3)) +
+                                         '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][9], 2)) +
+                                         ' м\nМакс/Мин - ' + str(round(all_stat['max_min'][9], 3)))
+        ui.checkBox_sum1.setStyleSheet(k_damp_detect('new', 9))
+    else:
+        ui.checkBox_sum1.setEnabled(False)
 
 
 def sum2():
-    all_stat['name'][10] = text_sum()
-    sum_signals(10)
-    ui.checkBox_sum2.setText('10 '+text_sum())
-    ui.checkBox_sum2.setToolTip('Коэффициент затухания - ' + str(round(all_stat['k_damp'][10], 3)) +
-                                     '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][10], 2)) +
-                                     ' м\nМакс/Мин - ' + str(round(all_stat['max_min'][10], 3)))
-    ui.checkBox_sum2.setStyleSheet(k_damp_detect('new', 10))
+    ui.checkBox_sum2.setEnabled(False)
+    ui.checkBox_sum2.setCheckState(0)
+    ui.checkBox_sum2.setStyleSheet('background: #f0f0f0')
     ui.checkBox_sum2.setEnabled(True)
+    if sum_signals(10):
+        all_stat['name'][10] = text_sum()
+        ui.checkBox_sum2.setText('10 '+text_sum())
+        ui.checkBox_sum2.setToolTip('Коэффициент затухания - ' + str(round(all_stat['k_damp'][10], 3)) +
+                                         '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][10], 2)) +
+                                         ' м\nМакс/Мин - ' + str(round(all_stat['max_min'][10], 3)))
+        ui.checkBox_sum2.setStyleSheet(k_damp_detect('new', 10))
+    else:
+        ui.checkBox_sum2.setEnabled(False)
 
 
 def sum3():
-    all_stat['name'][11] = text_sum()
-    sum_signals(11)
-    ui.checkBox_sum3.setText('11 '+text_sum())
-    ui.checkBox_sum3.setToolTip('Коэффициент затухания - ' + str(round(all_stat['k_damp'][11], 3)) +
-                                     '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][11], 2)) +
-                                     ' м\nМакс/Мин - ' + str(round(all_stat['max_min'][11], 3)))
-    ui.checkBox_sum3.setStyleSheet(k_damp_detect('new', 11))
+    ui.checkBox_sum3.setEnabled(False)
+    ui.checkBox_sum3.setCheckState(0)
+    ui.checkBox_sum3.setStyleSheet('background: #f0f0f0')
     ui.checkBox_sum3.setEnabled(True)
+    if sum_signals(11):
+        all_stat['name'][11] = text_sum()
+        ui.checkBox_sum3.setText('11 '+text_sum())
+        ui.checkBox_sum3.setToolTip('Коэффициент затухания - ' + str(round(all_stat['k_damp'][11], 3)) +
+                                         '\nЭффективная глубина - ' + str(round(all_stat['useful_depth'][11], 2)) +
+                                         ' м\nМакс/Мин - ' + str(round(all_stat['max_min'][11], 3)))
+        ui.checkBox_sum3.setStyleSheet(k_damp_detect('new', 11))
+    else:
+        ui.checkBox_sum3.setEnabled(False)
 
 
 def sum1_old():
-    all_stat_old['name'][13] = text_sum_old()
-    sum_signals_old(13)
-    ui.checkBox_sum1_old.setText('13 '+text_sum_old())
-    ui.checkBox_sum1_old.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][13], 3)) +
-                                  '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][13], 2)) +
-                                  ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][13], 3)))
-    ui.checkBox_sum1_old.setStyleSheet(k_damp_detect('old', 13))
+    ui.checkBox_sum1_old.setEnabled(False)
+    ui.checkBox_sum1_old.setCheckState(0)
+    ui.checkBox_sum1_old.setStyleSheet('background: #f0f0f0')
     ui.checkBox_sum1_old.setEnabled(True)
+    if sum_signals_old(13):
+        all_stat_old['name'][13] = text_sum_old()
+        ui.checkBox_sum1_old.setText('13 '+text_sum_old())
+        ui.checkBox_sum1_old.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][13], 3)) +
+                                      '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][13], 2)) +
+                                      ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][13], 3)))
+        ui.checkBox_sum1_old.setStyleSheet(k_damp_detect('old', 13))
+    else:
+        ui.checkBox_sum1_old.setEnabled(False)
 
 
 def sum2_old():
-    all_stat_old['name'][14] = text_sum_old()
-    sum_signals_old(14)
-    ui.checkBox_sum2_old.setText('14 '+text_sum_old())
-    ui.checkBox_sum2_old.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][14], 3)) +
-                                  '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][14], 2)) +
-                                  ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][14], 3)))
-    ui.checkBox_sum2_old.setStyleSheet(k_damp_detect('old', 14))
+    ui.checkBox_sum2_old.setEnabled(False)
+    ui.checkBox_sum2_old.setCheckState(0)
+    ui.checkBox_sum2_old.setStyleSheet('background: #f0f0f0')
     ui.checkBox_sum2_old.setEnabled(True)
+    if sum_signals_old(14):
+        all_stat_old['name'][14] = text_sum_old()
+        ui.checkBox_sum2_old.setText('14 '+text_sum_old())
+        ui.checkBox_sum2_old.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][14], 3)) +
+                                      '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][14], 2)) +
+                                      ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][14], 3)))
+        ui.checkBox_sum2_old.setStyleSheet(k_damp_detect('old', 14))
+    else:
+        ui.checkBox_sum2_old.setEnabled(False)
 
 
 def sum3_old():
-    all_stat_old['name'][15] = text_sum_old()
-    sum_signals_old(15)
-    ui.checkBox_sum3_old.setText('15 '+text_sum_old())
-    ui.checkBox_sum3_old.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][15], 3)) +
-                                  '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][15], 2)) +
-                                  ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][15], 3)))
-    ui.checkBox_sum3_old.setStyleSheet(k_damp_detect('old', 15))
+    ui.checkBox_sum3_old.setEnabled(False)
+    ui.checkBox_sum3_old.setCheckState(0)
+    ui.checkBox_sum3_old.setStyleSheet('background: #f0f0f0')
     ui.checkBox_sum3_old.setEnabled(True)
+    if sum_signals_old(15):
+        all_stat_old['name'][15] = text_sum_old()
+        ui.checkBox_sum3_old.setText('15 '+text_sum_old())
+        ui.checkBox_sum3_old.setToolTip('Коэффициент затухания - ' + str(round(all_stat_old['k_damp'][15], 3)) +
+                                      '\nЭффективная глубина - ' + str(round(all_stat_old['useful_depth'][15], 2)) +
+                                      ' м\nМакс/Мин - ' + str(round(all_stat_old['max_min'][15], 3)))
+        ui.checkBox_sum3_old.setStyleSheet(k_damp_detect('old', 15))
+    else:
+        ui.checkBox_sum3_old.setEnabled(False)
+
+
+def calc_pdf():
+    ui.label_info.setText('Расчет функция плотности вероятности...')
+    ui.label_info.setStyleSheet('color:blue')
+    ui.checkBox_pdf.setCheckState(0)
+    pdf_signal = []
+    list_sig = []
+    text = 'PDF '
+    ui.progressBar.reset()
+    ui.progressBar.setMaximum(len(all_signals['depth'])-1)
+    checkboxes = ui.new_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        if item.isEnabled() and int(item.text()[0:2]) not in [9, 10, 11] and item.checkState() == 2:
+            n_i = int(item.text()[0:2])
+            text = text + str(n_i) + ' '
+            list_sig.append(n_i)
+    if len(list_sig) > 1:
+        for row in range(len(all_signals['depth'])):
+            sel = []
+            for n_izm in list_sig:
+                sel.append(all_signals[n_izm][row])
+            signal_interval = np.linspace(np.min(sel), np.max(sel), 1000)
+            try:
+                pdf = st.gaussian_kde(sel)
+            except np.linalg.LinAlgError:
+                pdf_signal.append(sel[0])
+                ui.progressBar.setValue(row)
+                continue
+            pdf_func = pdf.evaluate(signal_interval)
+            pdf_func_max_index = pdf_func.argmax()
+            pdf_func_max = signal_interval[pdf_func_max_index]
+            pdf_signal.append(pdf_func_max)
+            ui.progressBar.setValue(row)
+        all_signals['pdf'] = pdf_signal
+        n_max = ((np.diff(np.sign(np.diff(all_signals['pdf']))) < 0).nonzero()[0] + 1).tolist()
+        n_max.insert(0, 0)
+        n_max.append(int(len(all_signals['pdf'])) - 1)
+        max_x = all_signals.loc[n_max, 'depth']  # выбираем x и y максимумов
+        max_y = all_signals.loc[n_max, 'pdf']
+        envelope = interp1d(max_x, max_y, kind='linear')  # выполняем интерполяцию по максимуму, получая огибающую
+        all_signals['pdf_envelope'] = envelope(all_signals['depth'])
+        all_signals['pdf_envelope'] = all_signals['pdf_envelope'].rolling(80, min_periods=1, center=True).mean()
+        ui.checkBox_pdf.setText(text)
+        ui.checkBox_pdf.setCheckState(2)
+        ui.label_info.setText('Расчитана функция плотности вероятности')
+        ui.label_info.setStyleSheet('color:green')
+    else:
+        ui.label_info.setText('Нужно выбрать несколько измерений')
+        ui.label_info.setStyleSheet('color:red')
+
+
+def calc_pdf_old():
+    ui.label_info.setText('Расчет функция плотности вероятности...')
+    ui.label_info.setStyleSheet('color:blue')
+    ui.checkBox_pdf_old.setCheckState(0)
+    pdf_signal = []
+    list_sig = []
+    text = 'PDF '
+    ui.progressBar.reset()
+    ui.progressBar.setMaximum(len(all_signals_old['depth'])-1)
+    checkboxes = ui.old_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        if item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15] and item.checkState() == 2:
+            n_i = int(item.text()[0:2])
+            text = text + str(n_i) + ' '
+            list_sig.append(n_i)
+    if len(list_sig) > 1:
+        for row in range(len(all_signals_old['depth'])):
+            sel = []
+            for n_izm in list_sig:
+                sel.append(all_signals_old[n_izm][row])
+            signal_interval = np.linspace(np.min(sel), np.max(sel), 1000)
+            try:
+                pdf = st.gaussian_kde(sel)
+            except np.linalg.LinAlgError:
+                pdf_signal.append(sel[0])
+                ui.progressBar.setValue(row)
+                continue
+            pdf_func = pdf.evaluate(signal_interval)
+            pdf_func_max_index = pdf_func.argmax()
+            pdf_func_max = signal_interval[pdf_func_max_index]
+            pdf_signal.append(pdf_func_max)
+            ui.progressBar.setValue(row)
+        all_signals_old['pdf'] = pdf_signal
+        all_signals_old['pdf'] = all_signals_old['pdf'].rolling(10, min_periods=1, center=True).mean()
+        ui.checkBox_pdf_old.setText(text)
+        ui.checkBox_pdf_old.setCheckState(2)
+        ui.label_info.setText('Расчитана функция плотности вероятности')
+        ui.label_info.setStyleSheet('color:green')
+    else:
+        ui.label_info.setText('Нужно выбрать несколько измерений')
+        ui.label_info.setStyleSheet('color:red')
 
 
 def text_sum():
     text = 'New: '
-    if ui.checkBox_signal1.checkState() == 2:
-        text = text + '1 '
-    if ui.checkBox_signal2.checkState() == 2:
-        text = text + '2 '
-    if ui.checkBox_signal3.checkState() == 2:
-        text = text + '3 '
-    if ui.checkBox_signal4.checkState() == 2:
-        text = text + '4 '
-    if ui.checkBox_signal5.checkState() == 2:
-        text = text + '5 '
-    if ui.checkBox_signal6.checkState() == 2:
-        text = text + '6 '
-    if ui.checkBox_signal7.checkState() == 2:
-        text = text + '7 '
-    if ui.checkBox_signal8.checkState() == 2:
-        text = text + '8 '
+    checkboxes = ui.new_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        if item.checkState() == 2:
+            n_izm = int(item.text()[0:2])
+            if n_izm < 9:
+                text = text + str(n_izm) + ' '
     return text
 
 
 def text_sum_old():
     text = 'Old: '
-    if ui.checkBox_signal_old_1.checkState() == 2:
-        text = text + '1 '
-    if ui.checkBox_signal_old_2.checkState() == 2:
-        text = text + '2 '
-    if ui.checkBox_signal_old_3.checkState() == 2:
-        text = text + '3 '
-    if ui.checkBox_signal_old_4.checkState() == 2:
-        text = text + '4 '
-    if ui.checkBox_signal_old_5.checkState() == 2:
-        text = text + '5 '
-    if ui.checkBox_signal_old_6.checkState() == 2:
-        text = text + '6 '
-    if ui.checkBox_signal_old_7.checkState() == 2:
-        text = text + '7 '
-    if ui.checkBox_signal_old_8.checkState() == 2:
-        text = text + '8 '
-    if ui.checkBox_signal_old_9.checkState() == 2:
-        text = text + '9 '
-    if ui.checkBox_signal_old_10.checkState() == 2:
-        text = text + '10 '
-    if ui.checkBox_signal_old_11.checkState() == 2:
-        text = text + '11 '
-    if ui.checkBox_signal_old_12.checkState() == 2:
-        text = text + '12 '
+    checkboxes = ui.old_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        if item.checkState() == 2:
+            n_izm = int(item.text()[0:2])
+            if n_izm < 13:
+                text = text + str(n_izm) + ' '
     return text
 
 
@@ -1015,6 +1320,7 @@ def calc_int_cement():
     ui.doubleSpinBox_x2_line.setValue(cement_sig['depth'].min()+10)
     ui.doubleSpinBox_y_line.setValue(ui.doubleSpinBox_defect2.value())
     draw_cement()
+    ui.pushButton_add_undefine.setEnabled(True)
 
 
 def draw_cement():
@@ -1060,17 +1366,12 @@ def corr_sig():
         interp_method = 'linear'
     else:
         interp_method = 'quadratic'
-
     if x1_index == xmax_index:
         corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
-        print(x1_index, xmax_index, x2_index)
     elif xmax_index == x2_index:
         corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
-        print(x1_index, xmax_index, x2_index)
     else:
         corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
-        print(x1_index, xmax_index, x2_index)
-
     cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
     cement_sig['plus_sig'] = cement_sig['plus_sig']*cement_sig['corr_coeff']
     cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min())
@@ -1094,14 +1395,10 @@ def corr_sig_bottom():
         interp_method = 'quadratic'
     if x1_index == xmax_index:
         corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
-        print(x1_index, xmax_index, x2_index)
     elif xmax_index == x2_index:
         corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
-        print(x1_index, xmax_index, x2_index)
     else:
         corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
-        print(x1_index, xmax_index, x2_index)
-
     cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
     cement_sig['plus_sig'] = cement_sig['plus_sig'] * cement_sig['corr_coeff']
     cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min())
@@ -1110,6 +1407,7 @@ def corr_sig_bottom():
 
 def fix_corr():
     cement_sig['first_sig'] = cement_sig['corr_sig']
+    cement_sig['corr_coeff'] = 1
     draw_cement()
 
 
@@ -1135,34 +1433,7 @@ def cementogramma():
     max_cement = ui.doubleSpinBox_max_cement.value()
     defect1 = ui.doubleSpinBox_defect1.value()
     defect2 = ui.doubleSpinBox_defect2.value()
-    cement_sig['quality'] = 0
-    begin = []
-    end = []
-    try:
-        if cement_sig['corr_sig'][0] > defect1:
-            begin.append(0)
-        for n, i in enumerate(cement_sig['corr_sig']):
-            if 0 < n < (len(cement_sig['corr_sig']) - 1):
-                if i >= defect1:
-                    if cement_sig['corr_sig'][n-1] < defect1:
-                        begin.append(n)
-                    if cement_sig['corr_sig'][n+1] < defect1:
-                        end.append(n+1)
-        if cement_sig['corr_sig'][len(cement_sig['corr_sig'])-1] >= defect1:
-            end.append(len(cement_sig['corr_sig']))
-        for i in range(len(begin)):
-            if cement_sig['corr_sig'].iloc[begin[i]:end[i]].max() >= defect2:
-                cement_sig['quality'].iloc[begin[i]:end[i]] = 2
-            else:
-                cement_sig['quality'].iloc[begin[i]:end[i]] = 1
-        for i in int_undefine_cement:
-            cement_sig['quality'].iloc[i[0]:i[1]] = 3
-        ui.label_info.setText('Готово!')
-        ui.label_info.setStyleSheet('color:green')
-    except IndexError:
-        ui.label_info.setText('Ошибка расчета интервалов дефектов. Поробуйте уменьшить максимальную глубину. '
-                                'Например на 1 метр.')
-        ui.label_info.setStyleSheet('color:red')
+    cement_sig['quality'] = calc_defect(cement_sig['corr_sig'], defect1, defect2)
 
     def draw_cement_int(ax, up):
         ax.axvline(x=defect1, linewidth=0.5, color='black', linestyle=':')
@@ -1268,6 +1539,14 @@ def check_int_defect():
     draw_cement()
 
 
+def check_int_defect_general():
+    """ проверка интервала уровней дефектов"""
+    ui.doubleSpinBox_defect1_new.setMaximum(ui.doubleSpinBox_defect2_new.value())
+    ui.doubleSpinBox_defect2_new.setMinimum(ui.doubleSpinBox_defect1_new.value())
+    ui.doubleSpinBox_defect1_old.setMaximum(ui.doubleSpinBox_defect2_old.value())
+    ui.doubleSpinBox_defect2_old.setMinimum(ui.doubleSpinBox_defect1_old.value())
+
+
 def check_int_undefine():
     """ проверка интервала неопределенного цемента"""
     ui.doubleSpinBox_undefine_min.setMaximum(ui.doubleSpinBox_undefine_max.value())
@@ -1331,7 +1610,7 @@ def save_cement():
     table.rows[1].cells[1].paragraphs[0].runs[1].text = str(round(cement_sig['depth'].min(), 1))
     table.rows[1].cells[1].paragraphs[0].runs[5].text = str(float(ui.doubleSpinBox_int_max.value()))
     doc.paragraphs[9].runs[10].text = str(round(cement_sig['depth'].min(), 1))
-    doc.paragraphs[9].runs[12].text = str(round(cement_sig['depth'].max(), 1))
+    doc.paragraphs[9].runs[12].text = str(float(ui.doubleSpinBox_int_max.value()))
     int_study = cement_sig['depth'].max() - cement_sig['depth'].min()
 
     # дата исследования
@@ -1461,61 +1740,53 @@ def save_cement():
 
 
 def draw_total_cement(device, n_izm, n_graph, fig, count_sig):
+    """ функция отрисовки цементограммы по всей длине """
     if device is all_signals_old:
         int_min_self = int_min_old
         int_max_self = int_max_old
     else:
         int_min_self = int_min
         int_max_self = int_max
-    signal = pd.DataFrame(device['depth'].iloc[int_min_self:int_max_self].copy())
-    signal['curve'] = device[str(n_izm) + '_diff_result'].iloc[int_min_self:int_max_self].copy()
-    signal = signal.reset_index(drop=True)
-    max_depth = signal['depth'].max()
-    min_depth = signal['depth'].min()
-    min_value = signal['curve'].min()
-    max_value = signal['curve'].max()
+    depth = device['depth'].iloc[int_min_self:int_max_self].tolist()
+    curve = device[str(n_izm) + '_diff_result'].iloc[int_min_self:int_max_self].tolist()
+    if device is all_signals:
+        if ui.checkBox_gen_def_new.checkState() == 2:
+            quality = np.array(device[str(n_izm) + '_qual_mean'].iloc[int_min_self:int_max_self].tolist())
+        else:
+            quality = np.array(device[str(n_izm) + '_quality'].iloc[int_min_self:int_max_self].tolist())
+    else:
+        if ui.checkBox_gen_def_old.checkState() == 2:
+            quality = np.array(device[str(n_izm) + '_qual_mean'].iloc[int_min_self:int_max_self].tolist())
+        else:
+            quality = np.array(device[str(n_izm) + '_quality'].iloc[int_min_self:int_max_self].tolist())
+    max_depth = np.max(depth)
+    min_depth = np.min(depth)
+    min_value = np.min(curve)
+    max_value = np.max(curve)
     min_cement = min_value - (10 * (max_value - min_value) / 100)
     max_cement = max_value + (10 * (max_value - min_value) / 100)
-    defect1 = min_value + (max_value - min_value) / 3
-    defect2 = min_value + (2 * (max_value - min_value) / 3)
-    # defect1 = 1
-    # defect2 = 5
-    signal['quality'] = 0
-    begin = []
-    end = []
-    try:
-        if signal['curve'][0] > defect1:
-            begin.append(0)
-        for n, i in enumerate(signal['curve']):
-            if 0 < n < (len(signal['curve']) - 1):
-                if i >= defect1:
-                    if signal['curve'][n - 1] < defect1:
-                        begin.append(n)
-                    if signal['curve'][n + 1] < defect1:
-                        end.append(n + 1)
-        if signal['curve'][len(signal['curve']) - 1] >= defect1:
-            end.append(len(signal['curve']))
-        for i in range(len(begin)):
-            if signal['curve'].iloc[begin[i]:end[i]].max() >= defect2:
-                signal['quality'].iloc[begin[i]:end[i]] = 2
-            else:
-                signal['quality'].iloc[begin[i]:end[i]] = 1
-    except IndexError:
-        ui.label_info.setText('Ошибка расчета интервалов дефектов. Поробуйте уменьшить максимальную глубину. '
-                                'Например на 1 метр.')
-        ui.label_info.setStyleSheet('color:red')
+    if device is all_signals:
+        if ui.checkBox_gen_def_new.checkState() == 2:
+            defect1 = ui.doubleSpinBox_defect1_new.value()
+            defect2 = ui.doubleSpinBox_defect2_new.value()
+        else:
+            defect1 = min_value + (max_value - min_value) / 3
+            defect2 = min_value + (2 * (max_value - min_value) / 3)
+    else:
+        if ui.checkBox_gen_def_old.checkState() == 2:
+            defect1 = ui.doubleSpinBox_defect1_old.value()
+            defect2 = ui.doubleSpinBox_defect2_old.value()
+        else:
+            defect1 = min_value + (max_value - min_value) / 3
+            defect2 = min_value + (2 * (max_value - min_value) / 3)
     ax = fig.add_subplot(1, count_sig, n_graph)
     ax.axvline(x=defect1, linewidth=0.5, color='black', linestyle=':')
     ax.axvline(x=defect2, linewidth=0.5, color='black', linestyle=':')
-    ax.fill_betweenx(signal['depth'], max_cement, signal['curve'], where=signal['quality'] >= 1, hatch='//',
-                     facecolor='#EDEDED')
-    ax.fill_betweenx(signal['depth'], max_cement, signal['curve'], where=signal['quality'] >= 2, hatch='////',
-                     facecolor='#BDBDBD')
-    ax.fill_betweenx(signal['depth'], min_cement, signal['curve'], where=signal['quality'] >= 1, hatch='//',
-                     facecolor='#EDEDED')
-    ax.fill_betweenx(signal['depth'], min_cement, signal['curve'], where=signal['quality'] >= 2, hatch='////',
-                     facecolor='#BDBDBD')
-    ax.plot(signal['curve'], signal['depth'], 'black')
+    ax.fill_betweenx(depth, max_cement, curve, where=quality >= 1, hatch='//', facecolor='#EDEDED')
+    ax.fill_betweenx(depth, max_cement, curve, where=quality >= 2, hatch='////', facecolor='#BDBDBD')
+    ax.fill_betweenx(depth, min_cement, curve, where=quality >= 1, hatch='//', facecolor='#EDEDED')
+    ax.fill_betweenx(depth, min_cement, curve, where=quality >= 2, hatch='////', facecolor='#BDBDBD')
+    ax.plot(curve, depth, 'black')
     plt.ylim(min_depth, max_depth)
     plt.xlim(min_cement, max_cement)
     if device is all_signals:
@@ -1530,18 +1801,58 @@ def draw_total_cement(device, n_izm, n_graph, fig, count_sig):
     ui.label_info.setStyleSheet('color:green')
 
 
+def draw_match_def(device, fig, count_sig):
+    """ функция отрисовки цементограммы по всей длине """
+    if device is all_signals_old:
+        int_min_self = int_min_old
+        int_max_self = int_max_old
+    else:
+        int_min_self = int_min
+        int_max_self = int_max
+    depth = device['depth'].iloc[int_min_self:int_max_self].tolist()
+    if device is all_signals:
+        if ui.checkBox_gen_def_new.checkState() == 2:
+            curve = all_signals['match_def_mean'].iloc[int_min_self:int_max_self].tolist()
+        else:
+            curve = all_signals['match_def_uniq'].iloc[int_min_self:int_max_self].tolist()
+    else:
+        if ui.checkBox_gen_def_old.checkState() == 2:
+            curve = all_signals_old['match_def_mean'].iloc[int_min_self:int_max_self].tolist()
+        else:
+            curve = all_signals_old['match_def_uniq'].iloc[int_min_self:int_max_self].tolist()
+    max_depth = np.max(depth)
+    min_depth = np.min(depth)
+    min_value = np.min(curve)
+    max_value = np.max(curve)
+    min_cement = min_value - (10 * (max_value - min_value) / 100)
+    max_cement = max_value + (10 * (max_value - min_value) / 100)
+    ax = fig.add_subplot(1, count_sig, count_sig)
+    ax.plot(curve, depth, 'black')
+    plt.ylim(min_depth, max_depth)
+    plt.xlim(min_cement, max_cement)
+    plt.title('совп деф')
+    ax.get_xaxis().set_visible(False)
+    plt.yticks(np.arange(min_depth, max_depth, 5))
+    ax.grid(axis='y', color='black', linestyle=':', linewidth=0.5)
+    ax.invert_yaxis()
+
+
 def all_cement():
-    fig = plt.figure(figsize=(12, 9))
-    for i in range(1, 9):
-        draw_total_cement(all_signals, i, i, fig, 8)
+    list_sig = create_list_sig('new')
+    fig = plt.figure(figsize=(len(list_sig)*1.5, 9))
+    for n, i in enumerate(list_sig):
+        draw_total_cement(all_signals, i, n + 1, fig, len(list_sig)+1)
+    draw_match_def(all_signals, fig, len(list_sig) + 1)
     fig.tight_layout()
     fig.show()
 
 
 def all_cement_old():
-    fig = plt.figure(figsize=(18, 9))
-    for i in range(1, 13):
-        draw_total_cement(all_signals_old, i, i, fig, 12)
+    list_sig = create_list_sig('old')
+    fig = plt.figure(figsize=(len(list_sig)*1.5, 9))
+    for n, i in enumerate(list_sig):
+        draw_total_cement(all_signals_old, i, n+1, fig, len(list_sig)+1)
+    draw_match_def(all_signals_old, fig, len(list_sig) + 1)
     fig.tight_layout()
     fig.show()
 
@@ -1567,6 +1878,25 @@ def choice_cement():
     fig.show()
 
 
+def create_list_sig(device):
+    """
+    Функция возвращает список существующих сигналов для итераций по ним
+    :param device: 'old' or 'new'
+    :return: list_sig
+    """
+    list_sig = []
+    if device == 'new':
+        checkboxes = ui.new_device.findChildren(QCheckBox)
+    elif device == 'old':
+        checkboxes = ui.old_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        n_i = int(item.text()[0:2])
+        if item.isEnabled():
+            list_sig.append(n_i)
+    list_sig.sort()
+    return list_sig
+
+
 def background_white():
     """переключение цвета фона графика"""
     if ui.checkBox_background_white.checkState() == 2:
@@ -1577,6 +1907,14 @@ def background_white():
 
 def open_options():
     """Загрузка настроек обработки"""
+    checkboxes = ui.new_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        item.setCheckState(0)
+    checkboxes = ui.old_device.findChildren(QCheckBox)
+    for item in checkboxes:
+        item.setCheckState(0)
+    ui.checkBox_corr_mode.setCheckState(0)
+
     file_name = QFileDialog.getOpenFileName(filter='*.vac')
     with open(file_name[0], 'rb') as f:
         load_options = pickle.load(f)
@@ -1648,6 +1986,49 @@ def calc_max_int(tab1, tab2, i):
         return res
 
 
+def check_all_new():
+    checkboxes = ui.new_device.findChildren(QCheckBox)
+    if ui.checkBox_all_new.checkState() == 2:
+        for item in checkboxes:
+            if item.isEnabled() and int(item.text()[0:2]) not in [9, 10, 11]:
+                item.setCheckState(2)
+    else:
+        for item in checkboxes:
+            if item.isEnabled():
+                item.setCheckState(0)
+
+
+def check_all_old():
+    checkboxes = ui.old_device.findChildren(QCheckBox)
+    if ui.checkBox_all_old.checkState() == 2:
+        for item in checkboxes:
+            if item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15]:
+                item.setCheckState(2)
+    else:
+        for item in checkboxes:
+            if item.isEnabled():
+                item.setCheckState(0)
+
+
+def remove_sum(device, list_sig):
+    """ Удалить суммы из списка сигналов """
+    if device is all_signals:
+        if 9 in list_sig:
+            list_sig.remove(9)
+        if 10 in list_sig:
+            list_sig.remove(10)
+        if 11 in list_sig:
+            list_sig.remove(11)
+    elif device is all_signals_old:
+        if 13 in list_sig:
+            list_sig.remove(13)
+        if 14 in list_sig:
+            list_sig.remove(14)
+        if 15 in list_sig:
+            list_sig.remove(15)
+    return list_sig
+
+
 ui.Button_direct.clicked.connect(open_dir)
 ui.Button_direct_old.clicked.connect(open_dir_old)
 ui.Button_open_sig.clicked.connect(open_sig)
@@ -1669,6 +2050,7 @@ ui.checkBox_mean.stateChanged.connect(choice_signal)
 ui.checkBox_norm.stateChanged.connect(choice_signal)
 ui.checkBox_rel_ampl.stateChanged.connect(choice_signal)
 ui.checkBox_diff_result.stateChanged.connect(choice_signal)
+ui.checkBox_all_new.stateChanged.connect(check_all_new)
 
 ui.checkBox_signal_old_1.stateChanged.connect(choice_signal)
 ui.checkBox_signal_old_2.stateChanged.connect(choice_signal)
@@ -1689,6 +2071,7 @@ ui.checkBox_mean_old.stateChanged.connect(choice_signal)
 ui.checkBox_norm_old.stateChanged.connect(choice_signal)
 ui.checkBox_rel_ampl_old.stateChanged.connect(choice_signal)
 ui.checkBox_diff_result_old.stateChanged.connect(choice_signal)
+ui.checkBox_all_old.stateChanged.connect(check_all_old)
 
 ui.spinBox_mean_win.valueChanged.connect(change_mean_win)
 ui.doubleSpinBox_coeff_norm.valueChanged.connect(change_mean_win)
@@ -1715,6 +2098,15 @@ ui.pushButton_sum3.clicked.connect(sum3)
 ui.checkBox_sum1.stateChanged.connect(choice_signal)
 ui.checkBox_sum2.stateChanged.connect(choice_signal)
 ui.checkBox_sum3.stateChanged.connect(choice_signal)
+
+ui.pushButton_pdf.clicked.connect(calc_pdf)
+ui.checkBox_pdf.stateChanged.connect(choice_signal)
+ui.pushButton_pdf_old.clicked.connect(calc_pdf_old)
+ui.checkBox_pdf_old.stateChanged.connect(choice_signal)
+ui.checkBox_match_def_new.stateChanged.connect(choice_signal)
+ui.checkBox_match_def_old.stateChanged.connect(choice_signal)
+ui.checkBox_gen_def_new.stateChanged.connect(choice_signal)
+ui.checkBox_gen_def_old.stateChanged.connect(choice_signal)
 
 ui.pushButton_sum1_old.clicked.connect(sum1_old)
 ui.pushButton_sum2_old.clicked.connect(sum2_old)
@@ -1748,6 +2140,13 @@ ui.pushButton_open_options.clicked.connect(open_options)
 ui.pushButton_all_cement.clicked.connect(all_cement)
 ui.pushButton_all_cement_old.clicked.connect(all_cement_old)
 ui.pushButton_choice_cement.clicked.connect(choice_cement)
+
+ui.doubleSpinBox_defect1_new.valueChanged.connect(check_int_defect_general)
+ui.doubleSpinBox_defect2_new.valueChanged.connect(check_int_defect_general)
+ui.doubleSpinBox_defect1_old.valueChanged.connect(check_int_defect_general)
+ui.doubleSpinBox_defect2_old.valueChanged.connect(check_int_defect_general)
+ui.pushButton_recalc_qual_new.clicked.connect(recalc_qual_new)
+ui.pushButton_recalc_qual_old.clicked.connect(recalc_qual_old)
 
 ui.checkBox_background_white.stateChanged.connect(background_white)
 
