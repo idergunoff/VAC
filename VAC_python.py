@@ -22,6 +22,9 @@ from VAC_dialog import *
 import pyqtgraph as pg
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+
+from standard import *
 
 
 app = QtWidgets.QApplication(sys.argv)
@@ -1857,6 +1860,167 @@ def all_cement_old():
     fig.show()
 
 
+def draw_graphics():
+    all_signals['sum5'] = (all_signals['1_envelope'] + all_signals['2_envelope'] + all_signals['5_envelope'] +
+                           all_signals['6_envelope']) / 4
+    all_signals['sum2'] = (all_signals['3_envelope'] + all_signals['4_envelope'] + all_signals['7_envelope'] +
+                           all_signals['8_envelope']) / 4
+
+    fig = plt.figure(figsize=(16.5, 11.7))
+    ax = fig.add_subplot(5, 3, 1)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['1_envelope'].iloc[int_min:int_max], label='551')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['5_envelope'].iloc[int_min:int_max], label='552')
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 2)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['1_envelope'].iloc[int_min:int_max], label='551')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['5_envelope'].iloc[int_min:int_max], label='552')
+    plt.ylim(0, 2.5)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 3)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['1_envelope'].iloc[int_min:int_max], label='551')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['5_envelope'].iloc[int_min:int_max], label='552')
+    plt.ylim(0, 1)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 4)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['2_envelope'].iloc[int_min:int_max], label='531')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['6_envelope'].iloc[int_min:int_max], label='532')
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 5)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['2_envelope'].iloc[int_min:int_max], label='531')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['6_envelope'].iloc[int_min:int_max], label='532')
+    plt.ylim(0, 2.5)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 6)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['2_envelope'].iloc[int_min:int_max], label='531')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['6_envelope'].iloc[int_min:int_max], label='532')
+    plt.ylim(0, 1)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 7)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['3_envelope'].iloc[int_min:int_max], label='251')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['7_envelope'].iloc[int_min:int_max], label='252')
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 8)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['3_envelope'].iloc[int_min:int_max], label='251')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['7_envelope'].iloc[int_min:int_max], label='252')
+    plt.ylim(0, 2.5)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 9)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['3_envelope'].iloc[int_min:int_max], label='251')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['7_envelope'].iloc[int_min:int_max], label='252')
+    plt.ylim(0, 1)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 10)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['4_envelope'].iloc[int_min:int_max], label='231')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['8_envelope'].iloc[int_min:int_max], label='232')
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 11)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['4_envelope'].iloc[int_min:int_max], label='231')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['8_envelope'].iloc[int_min:int_max], label='232')
+    plt.ylim(0, 2.5)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 12)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['4_envelope'].iloc[int_min:int_max], label='231')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['8_envelope'].iloc[int_min:int_max], label='232')
+    plt.ylim(0, 1)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 13)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['sum5'].iloc[int_min:int_max], label='Сумма 5Гц')
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['sum2'].iloc[int_min:int_max], label='Сумма 2Гц')
+    ax.plot(depth_new, good_new, label='скв.2093 после ремонта')
+    ax.plot(depth_new, bad_new, label='скв.2093 до ремонта')
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    ax = fig.add_subplot(5, 3, 14)
+    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['match_def_uniq'].iloc[int_min:int_max], label='Совпадение дефектов')
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
+    plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
+    ax.tick_params(labelsize=8, labelrotation=30, axis='x', which='major')
+    ax.legend()
+    ax.grid()
+
+    fig.suptitle('Новое оборудование')
+    fig.tight_layout()
+    fig.show()
+
+
 def choice_cement():
     choice_signal_new = []
     choice_signal_old = []
@@ -2140,6 +2304,8 @@ ui.pushButton_open_options.clicked.connect(open_options)
 ui.pushButton_all_cement.clicked.connect(all_cement)
 ui.pushButton_all_cement_old.clicked.connect(all_cement_old)
 ui.pushButton_choice_cement.clicked.connect(choice_cement)
+
+ui.pushButton_all_graphics.clicked.connect(draw_graphics)
 
 ui.doubleSpinBox_defect1_new.valueChanged.connect(check_int_defect_general)
 ui.doubleSpinBox_defect2_new.valueChanged.connect(check_int_defect_general)
