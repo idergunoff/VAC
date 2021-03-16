@@ -2291,11 +2291,11 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton_3">
+     <widget class="QPushButton" name="pushButton_corr_matrix">
       <property name="geometry">
        <rect>
-        <x>300</x>
-        <y>440</y>
+        <x>290</x>
+        <y>240</y>
         <width>161</width>
         <height>41</height>
        </rect>

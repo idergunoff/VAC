@@ -1086,9 +1086,9 @@ class Ui_MainWindow(object):
         self.label_71.setFont(font)
         self.label_71.setAlignment(QtCore.Qt.AlignCenter)
         self.label_71.setObjectName("label_71")
-        self.pushButton_3 = QtWidgets.QPushButton(self.tab)
-        self.pushButton_3.setGeometry(QtCore.QRect(300, 440, 161, 41))
-        self.pushButton_3.setObjectName("pushButton_3")
+        self.pushButton_corr_matrix = QtWidgets.QPushButton(self.tab)
+        self.pushButton_corr_matrix.setGeometry(QtCore.QRect(290, 240, 161, 41))
+        self.pushButton_corr_matrix.setObjectName("pushButton_corr_matrix")
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QtWidgets.QWidget()
         self.tab_2.setObjectName("tab_2")
@@ -1665,7 +1665,7 @@ class Ui_MainWindow(object):
         self.label_70.setText(_translate("MainWindow", "Средние значения уровней дефектов"))
         self.label_71.setText(_translate("MainWindow", "(расчитывается автоматически при пересчете интервала исследований,\n"
 "можно изменить и пересчитать уровни дефектов по введенным значаниям)"))
-        self.pushButton_3.setText(_translate("MainWindow", "Корреляционная матрица\n"
+        self.pushButton_corr_matrix.setText(_translate("MainWindow", "Корреляционная матрица\n"
 "по сигналам"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "Общие настройки"))
         self.pushButton_fix_corr.setToolTip(_translate("MainWindow", "Зафиксировать выполненные корректировки"))
