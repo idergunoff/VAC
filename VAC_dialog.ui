@@ -1766,7 +1766,7 @@
     <property name="geometry">
      <rect>
       <x>130</x>
-      <y>940</y>
+      <y>930</y>
       <width>151</width>
       <height>17</height>
      </rect>
@@ -1803,7 +1803,7 @@
     <property name="geometry">
      <rect>
       <x>800</x>
-      <y>940</y>
+      <y>930</y>
       <width>201</width>
       <height>17</height>
      </rect>
@@ -3461,6 +3461,106 @@
      <string>совпадение
 дефектов</string>
     </property>
+   </widget>
+   <widget class="QCheckBox" name="checkBox_diff_res_pdf_new">
+    <property name="geometry">
+     <rect>
+      <x>130</x>
+      <y>950</y>
+      <width>141</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>цементограмма PDF</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="checkBox_diff_res_pdf_old">
+    <property name="geometry">
+     <rect>
+      <x>800</x>
+      <y>950</y>
+      <width>141</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>цементограмма PDF</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="horizontalLayoutWidget_5">
+    <property name="geometry">
+     <rect>
+      <x>1590</x>
+      <y>10</y>
+      <width>160</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="1,3,1,3">
+     <item>
+      <widget class="QLabel" name="label_14">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>X:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_x">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>X</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_15">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Y:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_y">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Y</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">

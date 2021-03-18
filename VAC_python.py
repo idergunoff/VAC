@@ -271,23 +271,26 @@ def open_sig_old():
     else:
         all_signals_old['depth'] = np.arange(0, max_gl, 0.05839)
         set_int(all_signals_old)
+    list_boxes = []
     for item in checkboxes:
         if not item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15]:
-            n_sig = int(item.text()[0:2])
+            list_boxes.append(int(item.text()[0:2]))
+    list_boxes.sort()
+    n_sig = list_boxes[0]
+    signal_f = interp1d(np.linspace(0, max_gl, len_signal), signal, kind='linear', bounds_error=False)
+    all_signals_old[n_sig] = signal_f(all_signals_old['depth'])
+    all_stat_old['max_h'][n_sig] = max_gl
+    for item in checkboxes:
+        if int(item.text()[0:2]) == n_sig:
             item.setText(str(n_sig) + ' ' + file_name[0].split('/')[-1])
-            signal_f = interp1d(np.linspace(0, max_gl, len_signal), signal, kind='linear', bounds_error=False)
-            all_signals_old[n_sig] = signal_f(all_signals_old['depth'])
             all_stat_old['name'][n_sig] = item.text()
-            all_stat_old['max_h'][n_sig] = max_gl
-
-            if k_oldtonew == 1:
-                k_oldtonew = all_signals_old[n_sig].max() / 5
-            all_signals_old[n_sig] = all_signals_old[n_sig] / k_oldtonew
-
             item.setEnabled(True)
-            calc_to_int_old()
             item.setCheckState(2)
             break
+    if k_oldtonew == 1:
+        k_oldtonew = all_signals_old[n_sig].max() / 5
+    all_signals_old[n_sig] = all_signals_old[n_sig] / k_oldtonew
+    calc_to_int_old()
 
 
 def calc_to_int():
@@ -647,8 +650,16 @@ def choice_signal():
                              pen=pg.mkPen(color='#9CCC00', width=2.5, dash=[2, 2]))
     if ui.checkBox_pdf_old.checkState() == 2:
         ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
-                             y=all_signals_old['pdf'].iloc[int_min_old:int_max_old].tolist(),
+                             y=all_signals_old['pdf_envelope'].iloc[int_min_old:int_max_old].tolist(),
                              pen=pg.mkPen(color='#11CC00', width=2.5, dash=[2, 2]))
+    if ui.checkBox_diff_res_pdf_new.checkState() == 2:
+        ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
+                             y=all_signals['pdf_diff_result'].iloc[int_min:int_max].tolist(),
+                             pen=pg.mkPen(color='#DDFE71', width=2.5, dash=[2, 2]))
+    if ui.checkBox_diff_res_pdf_old.checkState() == 2:
+        ui.graphicsView.plot(x=all_signals_old['depth'].iloc[int_min_old:int_max_old].tolist(),
+                             y=all_signals_old['pdf_diff_result'].iloc[int_min_old:int_max_old].tolist(),
+                             pen=pg.mkPen(color='#FEE771', width=2.5, dash=[2, 2]))
     if ui.checkBox_match_def_new.checkState() == 2:
         if ui.checkBox_gen_def_new.checkState() == 2:
             ui.graphicsView.plot(x=all_signals['depth'].iloc[int_min:int_max].tolist(),
@@ -1157,11 +1168,32 @@ def calc_pdf():
         all_signals['pdf_envelope'] = all_signals['pdf_envelope'].rolling(80, min_periods=1, center=True).mean()
         ui.checkBox_pdf.setText(text)
         ui.checkBox_pdf.setCheckState(2)
+
+        mean_win = ui.spinBox_mean_win.value()
+        all_signals['pdf_envelope-1'] = all_signals['pdf_envelope'].shift(-1)
+        all_signals['pdf_mean'] = all_signals['pdf_envelope'].rolling(mean_win, min_periods=1, center=True).mean()
+        popt, pcov = curve_fit(func1, all_signals['depth'].iloc[int_min:int_max], all_signals['pdf_envelope'].iloc[int_min:int_max])
+        all_signals['pdf_func'] = func1(all_signals['depth'], popt[0], popt[1]) + 0.1
+        all_signals['pdf_rel_ampl'] = (all_signals['pdf_envelope-1'] - all_signals['pdf_func']) / all_signals['pdf_envelope-1']
+        all_signals['pdf_mean-1'] = all_signals['pdf_mean'].shift(-1)
+        all_signals['pdf_diff_norm'] = (all_signals['pdf_mean-1'] - all_signals['pdf_mean']) / all_signals['pdf_mean']
+        all_signals['pdf_diff_norm-1'] = all_signals['pdf_diff_norm'].shift(-1)
+        coeff_dif_res = ui.spinBox_coeff_dif_res.value()
+        all_signals['pdf_diff_result'] = (all_signals['pdf_diff_norm-1'] + all_signals['pdf_diff_norm']) * coeff_dif_res
+        all_signals.at[int_max, 'pdf_diff_result'] = all_signals.at[int_max - 2, 'pdf_diff_result']
+        all_signals.at[int_max - 1, 'pdf_diff_result'] = all_signals.at[int_max - 2, 'pdf_diff_result']
+
+        ui.label_info.setText('Готово!')
+        ui.label_info.setStyleSheet('color:green')
+        choice_signal()
+        all_signals.to_csv('all_signals.txt', sep='\t')
+
         ui.label_info.setText('Расчитана функция плотности вероятности')
         ui.label_info.setStyleSheet('color:green')
     else:
         ui.label_info.setText('Нужно выбрать несколько измерений')
         ui.label_info.setStyleSheet('color:red')
+    ui.pushButton_cem_pdf_new.setEnabled(True)
 
 
 def calc_pdf_old():
@@ -1196,15 +1228,33 @@ def calc_pdf_old():
             pdf_func_max = signal_interval[pdf_func_max_index]
             pdf_signal.append(pdf_func_max)
             ui.progressBar.setValue(row)
-        all_signals_old['pdf'] = pdf_signal
-        all_signals_old['pdf'] = all_signals_old['pdf'].rolling(10, min_periods=1, center=True).mean()
+        all_signals_old['pdf_envelope'] = pdf_signal
+        all_signals_old['pdf_envelope'] = all_signals_old['pdf_envelope'].rolling(10, min_periods=1, center=True).mean()
         ui.checkBox_pdf_old.setText(text)
         ui.checkBox_pdf_old.setCheckState(2)
+
+        mean_win = ui.spinBox_mean_win_old.value()
+        all_signals_old['pdf_envelope-1'] = all_signals_old['pdf_envelope'].shift(-1)
+        all_signals_old['pdf_mean'] = all_signals_old['pdf_envelope'].rolling(mean_win, min_periods=1, center=True).mean()
+        popt, pcov = curve_fit(func1, all_signals_old['depth'].iloc[int_min_old:int_max_old],
+                               all_signals_old['pdf_envelope'].iloc[int_min_old:int_max_old])
+        all_signals_old['pdf_func'] = func1(all_signals_old['depth'], popt[0], popt[1]) + 0.1
+        all_signals_old['pdf_rel_ampl'] = (all_signals_old['pdf_envelope-1'] - all_signals_old['pdf_func']) / all_signals_old[
+            'pdf_envelope-1']
+        all_signals_old['pdf_mean-1'] = all_signals_old['pdf_mean'].shift(-1)
+        all_signals_old['pdf_diff_norm'] = (all_signals_old['pdf_mean-1'] - all_signals_old['pdf_mean']) / all_signals_old['pdf_mean']
+        all_signals_old['pdf_diff_norm-1'] = all_signals_old['pdf_diff_norm'].shift(-1)
+        coeff_dif_res = ui.spinBox_coeff_dif_res_old.value()
+        all_signals_old['pdf_diff_result'] = (all_signals_old['pdf_diff_norm-1'] + all_signals_old['pdf_diff_norm']) * coeff_dif_res
+        all_signals_old.at[int_max_old, 'pdf_diff_result'] = all_signals_old.at[int_max_old - 2, 'pdf_diff_result']
+        all_signals_old.at[int_max_old - 1, 'pdf_diff_result'] = all_signals_old.at[int_max_old - 2, 'pdf_diff_result']
+
         ui.label_info.setText('Расчитана функция плотности вероятности')
         ui.label_info.setStyleSheet('color:green')
     else:
         ui.label_info.setText('Нужно выбрать несколько измерений')
         ui.label_info.setStyleSheet('color:red')
+    ui.pushButton_cem_pdf_old.setEnabled(True)
 
 
 def text_sum():
@@ -1330,6 +1380,64 @@ def calc_int_cement():
     ui.pushButton_add_undefine.setEnabled(True)
 
 
+def cement_from_pdf_new():
+    global cement_sig, int_undefine_cement
+    if int_min < 86:
+        cement_sig = pd.DataFrame(all_signals['depth'].iloc[86:int_max])
+        cement_sig['first_sig'] = all_signals['pdf_diff_result'].iloc[86:int_max]
+    else:
+        cement_sig = pd.DataFrame(all_signals['depth'].iloc[int_min:int_max])
+        cement_sig['first_sig'] = all_signals['pdf_diff_result'].iloc[int_min:int_max]
+
+    cement_sig = cement_sig.reset_index(drop=True)
+    cement_sig['corr_sig'] = cement_sig['first_sig'].copy()
+    cement_sig['corr_coeff'] = 1
+
+    ui.doubleSpinBox_undefine_max.setMaximum(cement_sig['depth'].max())
+    ui.label_int_undefine.setText('Интервалы неопр. цемента:')
+    int_undefine_cement = []
+    min_value = cement_sig['first_sig'].min()
+    max_value = cement_sig['first_sig'].max()
+    ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
+    ui.doubleSpinBox_max_cement.setValue(max_value + (10 * (max_value - min_value) / 100))
+    ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value) / 3)
+    ui.doubleSpinBox_defect2.setValue(min_value + (2 * (max_value - min_value) / 3))
+    ui.doubleSpinBox_x1_line.setValue(cement_sig['depth'].min())
+    ui.doubleSpinBox_x2_line.setValue(cement_sig['depth'].min() + 10)
+    ui.doubleSpinBox_y_line.setValue(ui.doubleSpinBox_defect2.value())
+    draw_cement()
+    ui.pushButton_add_undefine.setEnabled(True)
+
+
+def cement_from_pdf_old():
+    global cement_sig, int_undefine_cement
+    if int_min_old < 86:
+        cement_sig = pd.DataFrame(all_signals_old['depth'].iloc[86:int_max_old])
+        cement_sig['first_sig'] = all_signals_old['pdf_diff_result'].iloc[86:int_max_old]
+    else:
+        cement_sig = pd.DataFrame(all_signals_old['depth'].iloc[int_min_old:int_max_old])
+        cement_sig['first_sig'] = all_signals_old['pdf_diff_result'].iloc[int_min_old:int_max_old]
+
+    cement_sig = cement_sig.reset_index(drop=True)
+    cement_sig['corr_sig'] = cement_sig['first_sig'].copy()
+    cement_sig['corr_coeff'] = 1
+
+    ui.doubleSpinBox_undefine_max.setMaximum(cement_sig['depth'].max())
+    ui.label_int_undefine.setText('Интервалы неопр. цемента:')
+    int_undefine_cement = []
+    min_value = cement_sig['first_sig'].min()
+    max_value = cement_sig['first_sig'].max()
+    ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
+    ui.doubleSpinBox_max_cement.setValue(max_value + (10 * (max_value - min_value) / 100))
+    ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value) / 3)
+    ui.doubleSpinBox_defect2.setValue(min_value + (2 * (max_value - min_value) / 3))
+    ui.doubleSpinBox_x1_line.setValue(cement_sig['depth'].min())
+    ui.doubleSpinBox_x2_line.setValue(cement_sig['depth'].min() + 10)
+    ui.doubleSpinBox_y_line.setValue(ui.doubleSpinBox_defect2.value())
+    draw_cement()
+    ui.pushButton_add_undefine.setEnabled(True)
+
+
 def draw_cement():
     """ отрисовка цементограммы в pyqtgraph """
     ui.graphicsView.showGrid(x=False, y=False)  # грид-сетка
@@ -1424,6 +1532,7 @@ def plus_func():
 
 
 def add_undefine():
+    """ добавить интервал неопределенного цемента """
     min_undefine = ui.doubleSpinBox_undefine_min.value()
     max_undefine = ui.doubleSpinBox_undefine_max.value()
     minund_i = cement_sig.index[cement_sig['depth'] == get_nearest_value(cement_sig['depth'], min_undefine)].tolist()[0]
@@ -1987,8 +2096,12 @@ def draw_graphics():
     ax.grid(which='both')
 
     ax = fig.add_subplot(5, 2, 10)
-    ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['match_def_uniq'].iloc[int_min:int_max],
-            label='Совпадение дефектов')
+    if ui.checkBox_gen_def_new.checkState() == 2:
+        ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['match_def_mean'].iloc[int_min:int_max],
+                label='Совпадение дефектов')
+    else:
+        ax.plot(all_signals['depth'].iloc[int_min:int_max], all_signals['match_def_uniq'].iloc[int_min:int_max],
+                label='Совпадение дефектов')
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
     plt.xlim(all_signals['depth'][int_min], all_signals['depth'][int_max])
@@ -2198,8 +2311,14 @@ def draw_graphics_old():
     ax.grid(which='both')
 
     ax = fig.add_subplot(5, 2, 10)
-    ax.plot(all_signals_old['depth'].iloc[int_min_old:int_max_old], all_signals_old['match_def_uniq'].iloc[int_min_old:int_max_old],
-            label='Совпадение дефектов')
+    if ui.checkBox_gen_def_old.checkState() == 2:
+        ax.plot(all_signals_old['depth'].iloc[int_min_old:int_max_old],
+                all_signals_old['match_def_mean'].iloc[int_min_old:int_max_old],
+                label='Совпадение дефектов')
+    else:
+        ax.plot(all_signals_old['depth'].iloc[int_min_old:int_max_old],
+                all_signals_old['match_def_uniq'].iloc[int_min_old:int_max_old],
+                label='Совпадение дефектов')
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
     plt.xlim(all_signals_old['depth'][int_min_old], all_signals_old['depth'][int_max_old])
@@ -2480,7 +2599,7 @@ def corr_matrix():
             tabl_corr[str(i)+'new'] = st.rankdata(tabl_corr[str(i)+'new'])
     if len(list_sig_old) > 0:
         if len(list_sig_new) == 0:
-            tabl_corr = pd.DataFrame(all_signals_old['depth'].iloc[86:int_max].copy())
+            tabl_corr = pd.DataFrame(all_signals_old['depth'].iloc[86:int_max_old].copy())
         for i in list_sig_old:
             tabl_corr[str(i)+'old'] = all_signals_old[str(i)+'_diff_result'].iloc[86:int_max_old].copy()
             tabl_corr[str(i)+'old'] = st.rankdata(tabl_corr[str(i)+'old'])
@@ -2518,6 +2637,20 @@ def corr_matrix():
     else:
         ui.label_info.setText('Для расчета корреляции сигналов нужно выбрать минимум 2 сигнала')
         ui.label_info.setStyleSheet('color:red')
+
+
+def mouseMoved(evt):
+    ''' Отслеживаем координаты курсора '''
+    pos = evt[0]
+    vb = ui.graphicsView.getPlotItem().vb
+
+    if ui.graphicsView.sceneBoundingRect().contains(pos):
+        mousePoint = vb.mapSceneToView(pos)
+        ui.label_x.setText(str(round(mousePoint.x(), 3)))
+        ui.label_y.setText(str(round(mousePoint.y(), 3)))
+
+
+proxy = pg.SignalProxy(ui.graphicsView.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
 
 ui.Button_direct.clicked.connect(open_dir)
 ui.Button_direct_old.clicked.connect(open_dir_old)
@@ -2593,6 +2726,11 @@ ui.pushButton_pdf.clicked.connect(calc_pdf)
 ui.checkBox_pdf.stateChanged.connect(choice_signal)
 ui.pushButton_pdf_old.clicked.connect(calc_pdf_old)
 ui.checkBox_pdf_old.stateChanged.connect(choice_signal)
+ui.checkBox_diff_res_pdf_new.stateChanged.connect(choice_signal)
+ui.checkBox_diff_res_pdf_old.stateChanged.connect(choice_signal)
+ui.pushButton_cem_pdf_new.clicked.connect(cement_from_pdf_new)
+ui.pushButton_cem_pdf_old.clicked.connect(cement_from_pdf_old)
+
 ui.checkBox_match_def_new.stateChanged.connect(choice_signal)
 ui.checkBox_match_def_old.stateChanged.connect(choice_signal)
 ui.checkBox_gen_def_new.stateChanged.connect(choice_signal)
