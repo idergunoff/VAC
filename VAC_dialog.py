@@ -672,6 +672,29 @@ class Ui_MainWindow(object):
         self.checkBox_signal8.setFont(font)
         self.checkBox_signal8.setObjectName("checkBox_signal8")
         self.gridLayout_2.addWidget(self.checkBox_signal8, 3, 1, 1, 1)
+        self.horizontalLayout_12 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_12.setObjectName("horizontalLayout_12")
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_12.addItem(spacerItem)
+        self.spinBox_mean = QtWidgets.QSpinBox(self.gridLayoutWidget_2)
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.spinBox_mean.setFont(font)
+        self.spinBox_mean.setMinimum(1)
+        self.spinBox_mean.setMaximum(300)
+        self.spinBox_mean.setSingleStep(10)
+        self.spinBox_mean.setProperty("value", 40)
+        self.spinBox_mean.setObjectName("spinBox_mean")
+        self.horizontalLayout_12.addWidget(self.spinBox_mean)
+        self.pushButton_mean = QtWidgets.QPushButton(self.gridLayoutWidget_2)
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.pushButton_mean.setFont(font)
+        self.pushButton_mean.setObjectName("pushButton_mean")
+        self.horizontalLayout_12.addWidget(self.pushButton_mean)
+        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_12.addItem(spacerItem1)
+        self.gridLayout_2.addLayout(self.horizontalLayout_12, 0, 2, 1, 1)
         self.gridLayout_2.setColumnStretch(0, 6)
         self.gridLayout_2.setColumnStretch(1, 6)
         self.gridLayout_2.setColumnStretch(2, 6)
@@ -835,7 +858,7 @@ class Ui_MainWindow(object):
         self.gridLayout_3.setColumnStretch(2, 3)
         self.gridLayout_3.setColumnStretch(3, 7)
         self.label_info = QtWidgets.QLabel(self.centralwidget)
-        self.label_info.setGeometry(QtCore.QRect(30, 505, 1371, 16))
+        self.label_info.setGeometry(QtCore.QRect(30, 505, 1161, 16))
         self.label_info.setObjectName("label_info")
         self.checkBox_background_white = QtWidgets.QCheckBox(self.centralwidget)
         self.checkBox_background_white.setGeometry(QtCore.QRect(580, 20, 91, 17))
@@ -849,12 +872,6 @@ class Ui_MainWindow(object):
         font.setPointSize(10)
         self.pushButton_open_options.setFont(font)
         self.pushButton_open_options.setObjectName("pushButton_open_options")
-        self.pushButton_choice_cement = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_choice_cement.setGeometry(QtCore.QRect(680, 860, 101, 61))
-        font = QtGui.QFont()
-        font.setPointSize(10)
-        self.pushButton_choice_cement.setFont(font)
-        self.pushButton_choice_cement.setObjectName("pushButton_choice_cement")
         self.Button_open_sig = QtWidgets.QPushButton(self.centralwidget)
         self.Button_open_sig.setGeometry(QtCore.QRect(10, 610, 101, 51))
         font = QtGui.QFont()
@@ -923,6 +940,7 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setPointSize(10)
         self.tabWidget.setFont(font)
+        self.tabWidget.setToolTip("")
         self.tabWidget.setTabPosition(QtWidgets.QTabWidget.North)
         self.tabWidget.setObjectName("tabWidget")
         self.tab = QtWidgets.QWidget()
@@ -1089,6 +1107,12 @@ class Ui_MainWindow(object):
         self.pushButton_corr_matrix = QtWidgets.QPushButton(self.tab)
         self.pushButton_corr_matrix.setGeometry(QtCore.QRect(290, 240, 161, 41))
         self.pushButton_corr_matrix.setObjectName("pushButton_corr_matrix")
+        self.pushButton_choice_cement = QtWidgets.QPushButton(self.tab)
+        self.pushButton_choice_cement.setGeometry(QtCore.QRect(290, 290, 161, 41))
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.pushButton_choice_cement.setFont(font)
+        self.pushButton_choice_cement.setObjectName("pushButton_choice_cement")
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QtWidgets.QWidget()
         self.tab_2.setObjectName("tab_2")
@@ -1096,7 +1120,7 @@ class Ui_MainWindow(object):
         self.pushButton_fix_corr.setGeometry(QtCore.QRect(150, 250, 75, 23))
         self.pushButton_fix_corr.setObjectName("pushButton_fix_corr")
         self.gridLayoutWidget_6 = QtWidgets.QWidget(self.tab_2)
-        self.gridLayoutWidget_6.setGeometry(QtCore.QRect(20, 280, 235, 51))
+        self.gridLayoutWidget_6.setGeometry(QtCore.QRect(20, 280, 211, 51))
         self.gridLayoutWidget_6.setObjectName("gridLayoutWidget_6")
         self.gridLayout_6 = QtWidgets.QGridLayout(self.gridLayoutWidget_6)
         self.gridLayout_6.setContentsMargins(0, 0, 0, 0)
@@ -1441,6 +1465,9 @@ class Ui_MainWindow(object):
         font.setPointSize(10)
         self.pushButton_corr_sig.setFont(font)
         self.pushButton_corr_sig.setObjectName("pushButton_corr_sig")
+        self.pushButton_minmax_cem = QtWidgets.QPushButton(self.tab_2)
+        self.pushButton_minmax_cem.setGeometry(QtCore.QRect(150, 10, 71, 23))
+        self.pushButton_minmax_cem.setObjectName("pushButton_minmax_cem")
         self.tabWidget.addTab(self.tab_2, "")
         self.tab_3 = QtWidgets.QWidget()
         self.tab_3.setObjectName("tab_3")
@@ -1508,8 +1535,8 @@ class Ui_MainWindow(object):
         self.dateEdit.setCalendarPopup(True)
         self.dateEdit.setObjectName("dateEdit")
         self.verticalLayout_2.addWidget(self.dateEdit)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout_2.addItem(spacerItem)
+        spacerItem2 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout_2.addItem(spacerItem2)
         self.label_59 = QtWidgets.QLabel(self.tab_3)
         self.label_59.setGeometry(QtCore.QRect(194, 20, 141, 21))
         font = QtGui.QFont()
@@ -1538,7 +1565,7 @@ class Ui_MainWindow(object):
         self.checkBox_diff_res_pdf_old.setFont(font)
         self.checkBox_diff_res_pdf_old.setObjectName("checkBox_diff_res_pdf_old")
         self.horizontalLayoutWidget_5 = QtWidgets.QWidget(self.centralwidget)
-        self.horizontalLayoutWidget_5.setGeometry(QtCore.QRect(1590, 10, 160, 31))
+        self.horizontalLayoutWidget_5.setGeometry(QtCore.QRect(1220, 500, 160, 31))
         self.horizontalLayoutWidget_5.setObjectName("horizontalLayoutWidget_5")
         self.horizontalLayout_11 = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget_5)
         self.horizontalLayout_11.setContentsMargins(0, 0, 0, 0)
@@ -1591,6 +1618,8 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "ВАЦ обработка"))
+        self.Button_direct.setToolTip(_translate("MainWindow", "Открыть все сигналы нового оборудования\n"
+"по одной скважине. Выберите папку "))
         self.Button_direct.setText(_translate("MainWindow", "Новое об-е\n"
 "Выбрать\n"
 "директорию"))
@@ -1616,14 +1645,18 @@ class Ui_MainWindow(object):
         self.pushButton_int.setText(_translate("MainWindow", "Пересчитать"))
         self.label_11.setText(_translate("MainWindow", "Замер 1"))
         self.label_12.setText(_translate("MainWindow", "Замер 2"))
+        self.checkBox_noise.setToolTip(_translate("MainWindow", "Шум по новому оборудованию"))
         self.checkBox_noise.setText(_translate("MainWindow", "шум"))
         self.label_18.setText(_translate("MainWindow", "Новое оборудование"))
+        self.Button_direct_old.setToolTip(_translate("MainWindow", "Открыть все сигналы старого оборудования\n"
+"по одной скважине. Выберите папку "))
         self.Button_direct_old.setText(_translate("MainWindow", "Старое об-е\n"
 "Выбрать\n"
 "директорию"))
         self.label_19.setText(_translate("MainWindow", "Замер 1"))
         self.label_20.setText(_translate("MainWindow", "Замер 2"))
         self.label_21.setText(_translate("MainWindow", "Замер 3"))
+        self.checkBox_noise_old.setToolTip(_translate("MainWindow", "Шум по старому оборудованию"))
         self.checkBox_noise_old.setText(_translate("MainWindow", "шум"))
         self.label_22.setText(_translate("MainWindow", "Старое оборудование"))
         self.label_direct_old.setText(_translate("MainWindow", "Директория"))
@@ -1654,6 +1687,10 @@ class Ui_MainWindow(object):
         self.checkBox_signal6.setText(_translate("MainWindow", "6 сигнал"))
         self.checkBox_signal7.setText(_translate("MainWindow", "7 сигнал"))
         self.checkBox_signal8.setText(_translate("MainWindow", "8 сигнал"))
+        self.spinBox_mean.setToolTip(_translate("MainWindow", "Размер усредняющего окна\n"
+"при сглаживании исходного сигнала\n"
+"нового оборудования"))
+        self.pushButton_mean.setText(_translate("MainWindow", "Пересчитать"))
         self.checkBox_sum2_old.setText(_translate("MainWindow", "14 сумма"))
         self.pushButton_sum2_old.setText(_translate("MainWindow", "+"))
         self.checkBox_sum1_old.setText(_translate("MainWindow", "13 сумма"))
@@ -1672,42 +1709,58 @@ class Ui_MainWindow(object):
         self.checkBox_signal_old_10.setText(_translate("MainWindow", "10 сигнал"))
         self.checkBox_signal_old_11.setText(_translate("MainWindow", "11 сигнал"))
         self.checkBox_signal_old_12.setText(_translate("MainWindow", "12 сигнал"))
+        self.label_info.setToolTip(_translate("MainWindow", "Информационные сообщения"))
         self.label_info.setText(_translate("MainWindow", "info..."))
         self.checkBox_background_white.setText(_translate("MainWindow", "Белый фон"))
         self.pushButton_open_options.setText(_translate("MainWindow", "Загрузить настройки"))
-        self.pushButton_choice_cement.setText(_translate("MainWindow", "Построить\n"
-"выбранные\n"
-"цементограммы"))
+        self.Button_open_sig.setToolTip(_translate("MainWindow", "Открыть один сигнал нового оборудования\n"
+"любой скважины. Выберите файл *.lvm "))
         self.Button_open_sig.setText(_translate("MainWindow", "Новое об-е\n"
 "Открыть сигнал"))
+        self.Button_open_sig_old.setToolTip(_translate("MainWindow", "Открыть один сигнал старого оборудования\n"
+"любой скважины. Выберите файл *.TWF "))
         self.Button_open_sig_old.setText(_translate("MainWindow", "Старое об-е\n"
 "Открыть сигнал"))
         self.checkBox_pdf.setText(_translate("MainWindow", "PDF"))
+        self.pushButton_pdf.setToolTip(_translate("MainWindow", "Расчет среднестатистического сигнала\n"
+"среди выбранных сигналов нового оборудования"))
         self.pushButton_pdf.setText(_translate("MainWindow", "Функция плотности\n"
 "вероятности (PDF)"))
         self.checkBox_pdf_old.setText(_translate("MainWindow", "PDF"))
+        self.pushButton_pdf_old.setToolTip(_translate("MainWindow", "Расчет среднестатистического сигнала\n"
+"среди выбранных сигналов старого оборудования"))
         self.pushButton_pdf_old.setText(_translate("MainWindow", "Функция плотности\n"
 "вероятности (PDF)"))
         self.checkBox_all_new.setText(_translate("MainWindow", "Выбрать все"))
         self.checkBox_all_old.setText(_translate("MainWindow", "Выбрать все"))
+        self.pushButton_cem_pdf_new.setToolTip(_translate("MainWindow", "Построить цементограмму по PDF сигналу.\n"
+"Для настройки перейдите во вкладку \"Настройки цементограммы\""))
         self.pushButton_cem_pdf_new.setText(_translate("MainWindow", "Цементограмма\n"
 "по PDF"))
+        self.pushButton_cem_pdf_old.setToolTip(_translate("MainWindow", "Построить цементограмму по PDF сигналу.\n"
+"Для настройки перейдите во вкладку \"Настройки цементограммы\""))
         self.pushButton_cem_pdf_old.setText(_translate("MainWindow", "Цементограмма\n"
 "по PDF"))
         self.label_60.setText(_translate("MainWindow", "Новое\n"
 "оборудование"))
+        self.pushButton_all_cement.setToolTip(_translate("MainWindow", "Построить все цементограммы нового оборудования"))
         self.pushButton_all_cement.setText(_translate("MainWindow", "Цементограммы"))
         self.label_63.setText(_translate("MainWindow", "Дефект 1"))
         self.label_64.setText(_translate("MainWindow", "Дефект 2"))
         self.checkBox_gen_def_new.setText(_translate("MainWindow", "общие уровни\n"
 "дефектов"))
+        self.pushButton_all_graphics.setToolTip(_translate("MainWindow", "Построить графики исходных\n"
+"сигналов по новому оборудованию"))
         self.pushButton_all_graphics.setText(_translate("MainWindow", "Графики"))
         self.pushButton_recalc_qual_new.setText(_translate("MainWindow", "Пересчитать"))
         self.label_67.setText(_translate("MainWindow", "Дефект 1"))
         self.label_68.setText(_translate("MainWindow", "Дефект 2"))
+        self.pushButton_all_cement_old.setToolTip(_translate("MainWindow", "Построить все цементограммы старого оборудования"))
         self.pushButton_all_cement_old.setText(_translate("MainWindow", "Цементограммы"))
         self.checkBox_gen_def_old.setText(_translate("MainWindow", "общие уровни\n"
 "дефектов"))
+        self.pushButton_all_graphics_old.setToolTip(_translate("MainWindow", "Построить графики исходных\n"
+"сигналов по старому оборудованию"))
         self.pushButton_all_graphics_old.setText(_translate("MainWindow", "Графики"))
         self.pushButton_recalc_qual_old.setText(_translate("MainWindow", "Пересчитать"))
         self.label_69.setText(_translate("MainWindow", "Старое\n"
@@ -1715,8 +1768,13 @@ class Ui_MainWindow(object):
         self.label_70.setText(_translate("MainWindow", "Средние значения уровней дефектов"))
         self.label_71.setText(_translate("MainWindow", "(расчитывается автоматически при пересчете интервала исследований,\n"
 "можно изменить и пересчитать уровни дефектов по введенным значаниям)"))
+        self.pushButton_corr_matrix.setToolTip(_translate("MainWindow", "Расчет коэффициентов корреляции между выбранными сигналами\n"
+"и построение корреляционной матрицы"))
         self.pushButton_corr_matrix.setText(_translate("MainWindow", "Корреляционная матрица\n"
 "по сигналам"))
+        self.pushButton_choice_cement.setToolTip(_translate("MainWindow", "Построить цементограмы выбранных сигналов"))
+        self.pushButton_choice_cement.setText(_translate("MainWindow", "Построить выбранные\n"
+"цементограммы"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "Общие настройки"))
         self.pushButton_fix_corr.setToolTip(_translate("MainWindow", "Зафиксировать выполненные корректировки"))
         self.pushButton_fix_corr.setText(_translate("MainWindow", "FIX"))
@@ -1733,8 +1791,15 @@ class Ui_MainWindow(object):
         self.label_53.setText(_translate("MainWindow", "MIN"))
         self.label_55.setText(_translate("MainWindow", "Дефект 1"))
         self.label_56.setText(_translate("MainWindow", "Дефект 2"))
+        self.pushButton_cement.setToolTip(_translate("MainWindow", "Построить цементограмму.\n"
+"Последняя построенная цементограмма\n"
+"будет использоваться в отчете"))
         self.pushButton_cement.setText(_translate("MainWindow", "Цементо-\n"
 "грамма"))
+        self.pushButton_int_cement.setToolTip(_translate("MainWindow", "Выбрать сигнал для построения цементограммы\n"
+"(должен быть выбран только один сигнал)\n"
+"Расчитывается уровнь дефектов\n"
+"Также данная кнопка отменяет все корректировки"))
         self.pushButton_int_cement.setText(_translate("MainWindow", "Авто\n"
 "Интервалы"))
         self.pushButton_corr_sig_bottom.setToolTip(_translate("MainWindow", "Вытянуть выделенный интервал\n"
@@ -1750,6 +1815,8 @@ class Ui_MainWindow(object):
         self.pushButton_corr_sig.setToolTip(_translate("MainWindow", "Вытянуть выделенный интервал\n"
 "по максимальному значению в интервале"))
         self.pushButton_corr_sig.setText(_translate("MainWindow", "по MAX"))
+        self.pushButton_minmax_cem.setToolTip(_translate("MainWindow", "Выравнивание максимумов и минимумов цементограммы"))
+        self.pushButton_minmax_cem.setText(_translate("MainWindow", "min↔max"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("MainWindow", "Настройки цементограммы"))
         self.pushButton_from_temp.setText(_translate("MainWindow", "из шаблона"))
         self.pushButton_save_cement.setText(_translate("MainWindow", "Сохранить"))
@@ -1767,8 +1834,14 @@ class Ui_MainWindow(object):
 "(по-умолчанию: вчерашний день)"))
         self.label_59.setText(_translate("MainWindow", "Цементограмма"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("MainWindow", "Цементограмма"))
+        self.checkBox_match_def_new.setToolTip(_translate("MainWindow", "Отобразить график совпадения дефектов по новому оборудованию\n"
+"Во вкладке \"Общие настройки\" можно выбрать расчет совпадений\n"
+"по общему уровню дефектов или по индивидуальным уровням для каждого сигнала"))
         self.checkBox_match_def_new.setText(_translate("MainWindow", "совпадение\n"
 "дефектов"))
+        self.checkBox_match_def_old.setToolTip(_translate("MainWindow", "Отобразить график совпадения дефектов по старому оборудованию\n"
+"Во вкладке \"Общие настройки\" можно выбрать расчет совпадений\n"
+"по общему уровню дефектов или по индивидуальным уровням для каждого сигнала"))
         self.checkBox_match_def_old.setText(_translate("MainWindow", "совпадение\n"
 "дефектов"))
         self.checkBox_diff_res_pdf_new.setText(_translate("MainWindow", "цементограмма PDF"))

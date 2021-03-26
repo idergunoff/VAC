@@ -34,6 +34,10 @@
       <pointsize>10</pointsize>
      </font>
     </property>
+    <property name="toolTip">
+     <string>Открыть все сигналы нового оборудования
+по одной скважине. Выберите папку </string>
+    </property>
     <property name="text">
      <string>Новое об-е
 Выбрать
@@ -564,6 +568,9 @@
          <pointsize>10</pointsize>
         </font>
        </property>
+       <property name="toolTip">
+        <string>Шум по новому оборудованию</string>
+       </property>
        <property name="text">
         <string>шум</string>
        </property>
@@ -607,6 +614,10 @@
      <font>
       <pointsize>10</pointsize>
      </font>
+    </property>
+    <property name="toolTip">
+     <string>Открыть все сигналы старого оборудования
+по одной скважине. Выберите папку </string>
     </property>
     <property name="text">
      <string>Старое об-е
@@ -690,6 +701,9 @@
         <font>
          <pointsize>10</pointsize>
         </font>
+       </property>
+       <property name="toolTip">
+        <string>Шум по старому оборудованию</string>
        </property>
        <property name="text">
         <string>шум</string>
@@ -1352,6 +1366,74 @@
         </property>
        </widget>
       </item>
+      <item row="0" column="2">
+       <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="0,0,0,0">
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spinBox_mean">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string>Размер усредняющего окна
+при сглаживании исходного сигнала
+нового оборудования</string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>300</number>
+          </property>
+          <property name="singleStep">
+           <number>10</number>
+          </property>
+          <property name="value">
+           <number>40</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_mean">
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Пересчитать</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
      </layout>
     </widget>
    </widget>
@@ -1660,9 +1742,12 @@
      <rect>
       <x>30</x>
       <y>505</y>
-      <width>1371</width>
+      <width>1161</width>
       <height>16</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>Информационные сообщения</string>
     </property>
     <property name="text">
      <string>info...</string>
@@ -1704,26 +1789,6 @@
      <string>Загрузить настройки</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_choice_cement">
-    <property name="geometry">
-     <rect>
-      <x>680</x>
-      <y>860</y>
-      <width>101</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>10</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>Построить
-выбранные
-цементограммы</string>
-    </property>
-   </widget>
    <widget class="QPushButton" name="Button_open_sig">
     <property name="geometry">
      <rect>
@@ -1737,6 +1802,10 @@
      <font>
       <pointsize>10</pointsize>
      </font>
+    </property>
+    <property name="toolTip">
+     <string>Открыть один сигнал нового оборудования
+любой скважины. Выберите файл *.lvm </string>
     </property>
     <property name="text">
      <string>Новое об-е
@@ -1756,6 +1825,10 @@
      <font>
       <pointsize>10</pointsize>
      </font>
+    </property>
+    <property name="toolTip">
+     <string>Открыть один сигнал старого оборудования
+любой скважины. Выберите файл *.TWF </string>
     </property>
     <property name="text">
      <string>Старое об-е
@@ -1794,6 +1867,10 @@
       <pointsize>10</pointsize>
      </font>
     </property>
+    <property name="toolTip">
+     <string>Расчет среднестатистического сигнала
+среди выбранных сигналов нового оборудования</string>
+    </property>
     <property name="text">
      <string>Функция плотности
 вероятности (PDF)</string>
@@ -1830,6 +1907,10 @@
      <font>
       <pointsize>10</pointsize>
      </font>
+    </property>
+    <property name="toolTip">
+     <string>Расчет среднестатистического сигнала
+среди выбранных сигналов старого оборудования</string>
     </property>
     <property name="text">
      <string>Функция плотности
@@ -1889,6 +1970,10 @@
       <pointsize>10</pointsize>
      </font>
     </property>
+    <property name="toolTip">
+     <string>Построить цементограмму по PDF сигналу.
+Для настройки перейдите во вкладку &quot;Настройки цементограммы&quot;</string>
+    </property>
     <property name="text">
      <string>Цементограмма
 по PDF</string>
@@ -1910,6 +1995,10 @@
      <font>
       <pointsize>10</pointsize>
      </font>
+    </property>
+    <property name="toolTip">
+     <string>Построить цементограмму по PDF сигналу.
+Для настройки перейдите во вкладку &quot;Настройки цементограммы&quot;</string>
     </property>
     <property name="text">
      <string>Цементограмма
@@ -1935,6 +2024,9 @@
      <font>
       <pointsize>10</pointsize>
      </font>
+    </property>
+    <property name="toolTip">
+     <string/>
     </property>
     <property name="tabPosition">
      <enum>QTabWidget::North</enum>
@@ -1997,6 +2089,9 @@
           <font>
            <pointsize>8</pointsize>
           </font>
+         </property>
+         <property name="toolTip">
+          <string>Построить все цементограммы нового оборудования</string>
          </property>
          <property name="layoutDirection">
           <enum>Qt::LeftToRight</enum>
@@ -2087,6 +2182,10 @@
           <font>
            <pointsize>10</pointsize>
           </font>
+         </property>
+         <property name="toolTip">
+          <string>Построить графики исходных
+сигналов по новому оборудованию</string>
          </property>
          <property name="text">
           <string>Графики</string>
@@ -2186,6 +2285,9 @@
            <pointsize>8</pointsize>
           </font>
          </property>
+         <property name="toolTip">
+          <string>Построить все цементограммы старого оборудования</string>
+         </property>
          <property name="text">
           <string>Цементограммы</string>
          </property>
@@ -2206,6 +2308,10 @@
        </item>
        <item row="2" column="1">
         <widget class="QPushButton" name="pushButton_all_graphics_old">
+         <property name="toolTip">
+          <string>Построить графики исходных
+сигналов по старому оборудованию</string>
+         </property>
          <property name="text">
           <string>Графики</string>
          </property>
@@ -2300,9 +2406,35 @@
         <height>41</height>
        </rect>
       </property>
+      <property name="toolTip">
+       <string>Расчет коэффициентов корреляции между выбранными сигналами
+и построение корреляционной матрицы</string>
+      </property>
       <property name="text">
        <string>Корреляционная матрица
 по сигналам</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton_choice_cement">
+      <property name="geometry">
+       <rect>
+        <x>290</x>
+        <y>290</y>
+        <width>161</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="toolTip">
+       <string>Построить цементограмы выбранных сигналов</string>
+      </property>
+      <property name="text">
+       <string>Построить выбранные
+цементограммы</string>
       </property>
      </widget>
     </widget>
@@ -2331,7 +2463,7 @@
        <rect>
         <x>20</x>
         <y>280</y>
-        <width>235</width>
+        <width>211</width>
         <height>51</height>
        </rect>
       </property>
@@ -3006,6 +3138,11 @@
        </item>
        <item row="4" column="1">
         <widget class="QPushButton" name="pushButton_cement">
+         <property name="toolTip">
+          <string>Построить цементограмму.
+Последняя построенная цементограмма
+будет использоваться в отчете</string>
+         </property>
          <property name="text">
           <string>Цементо-
 грамма</string>
@@ -3019,6 +3156,12 @@
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Выбрать сигнал для построения цементограммы
+(должен быть выбран только один сигнал)
+Расчитывается уровнь дефектов
+Также данная кнопка отменяет все корректировки</string>
          </property>
          <property name="statusTip">
           <string/>
@@ -3251,6 +3394,22 @@
        <string>по MAX</string>
       </property>
      </widget>
+     <widget class="QPushButton" name="pushButton_minmax_cem">
+      <property name="geometry">
+       <rect>
+        <x>150</x>
+        <y>10</y>
+        <width>71</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Выравнивание максимумов и минимумов цементограммы</string>
+      </property>
+      <property name="text">
+       <string>min↔max</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="tab_3">
      <attribute name="title">
@@ -3443,6 +3602,11 @@
       <height>31</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string>Отобразить график совпадения дефектов по новому оборудованию
+Во вкладке &quot;Общие настройки&quot; можно выбрать расчет совпадений
+по общему уровню дефектов или по индивидуальным уровням для каждого сигнала</string>
+    </property>
     <property name="text">
      <string>совпадение
 дефектов</string>
@@ -3456,6 +3620,11 @@
       <width>81</width>
       <height>31</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>Отобразить график совпадения дефектов по старому оборудованию
+Во вкладке &quot;Общие настройки&quot; можно выбрать расчет совпадений
+по общему уровню дефектов или по индивидуальным уровням для каждого сигнала</string>
     </property>
     <property name="text">
      <string>совпадение
@@ -3501,8 +3670,8 @@
    <widget class="QWidget" name="horizontalLayoutWidget_5">
     <property name="geometry">
      <rect>
-      <x>1590</x>
-      <y>10</y>
+      <x>1220</x>
+      <y>500</y>
       <width>160</width>
       <height>31</height>
      </rect>
