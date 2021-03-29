@@ -1421,8 +1421,7 @@ def calc_int_cement():
     max_value = cement_sig['first_sig'].max()
     ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
     ui.doubleSpinBox_max_cement.setValue(max_value + (10 * (max_value - min_value) / 100))
-    ui.doubleSpinBox_min_cement.setMaximum(ui.doubleSpinBox_min_cement.value())
-    ui.doubleSpinBox_max_cement.setMinimum(ui.doubleSpinBox_max_cement.value())
+
     ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value)/3)
     ui.doubleSpinBox_defect2.setValue(min_value + (2*(max_value - min_value)/3))
     ui.doubleSpinBox_x1_line.setValue(cement_sig['depth'].min())
@@ -1459,8 +1458,7 @@ def cement_from_pdf_new():
     max_value = cement_sig['first_sig'].max()
     ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
     ui.doubleSpinBox_max_cement.setValue(max_value + (10 * (max_value - min_value) / 100))
-    ui.doubleSpinBox_min_cement.setMaximum(ui.doubleSpinBox_min_cement.value())
-    ui.doubleSpinBox_max_cement.setMinimum(ui.doubleSpinBox_max_cement.value())
+
     ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value) / 3)
     ui.doubleSpinBox_defect2.setValue(min_value + (2 * (max_value - min_value) / 3))
     ui.doubleSpinBox_x1_line.setValue(cement_sig['depth'].min())
@@ -1786,6 +1784,7 @@ def save_cement():
     else:
         tube = 'кондуктора'
     doc.paragraphs[9].runs[3].text = tube
+    doc.paragraphs[11].runs[1].text = tube
 
     # диаметр трубы
     table.rows[1].cells[0].paragraphs[0].runs[3].text = ui.lineEdit_pipe_diameter.text()
