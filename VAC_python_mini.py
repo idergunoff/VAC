@@ -1833,78 +1833,140 @@ def save_cement():
     # Интервалы дефектов
     n_row = 1
     h_def = 0
-    if cement_sig['quality'][0] > 0:
-        table2.rows[0].cells[0].tables[0].add_row()
-        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].add_run(str(round(
-            cement_sig['depth'][0], 1)))
-        note.font.size = Pt(11)
-        note.font.name = 'Times New Roman'
-        table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for i, quality in enumerate(cement_sig['quality']):
-        if 0 < i < (len(cement_sig['quality']) - 1):
-            if quality > 0:
-                if cement_sig['quality'][i-1] != quality:
-                    table2.rows[0].cells[0].tables[0].add_row()
-                    note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].add_run(
-                        str(round(cement_sig['depth'][i], 1)))
-                    note.font.size = Pt(11)
-                    note.font.name = 'Times New Roman'
-                    table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].alignment = \
-                        WD_ALIGN_PARAGRAPH.CENTER
-                if cement_sig['quality'][i + 1] != quality:
-                    note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].add_run(
-                        str(round(cement_sig['depth'][i], 1)))
-                    note.font.size = Pt(11)
-                    note.font.name = 'Times New Roman'
-                    table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].alignment = \
-                        WD_ALIGN_PARAGRAPH.CENTER
-                    h = float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].text) - \
-                        float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].text)
-                    h_def = h_def + h
-                    note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].add_run(str(round(
-                        h, 1)))
-                    note.font.size = Pt(11)
-                    note.font.name = 'Times New Roman'
-                    table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].alignment = \
-                        WD_ALIGN_PARAGRAPH.CENTER
-                    if quality == 1:
-                        defect = 'частичный цемент'
-                    elif quality == 2:
-                        defect = 'плохой цемент'
-                    elif quality == 3:
-                        defect = 'неопределённый цемент'
-                    note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run(defect)
-                    note.font.size = Pt(11)
-                    note.font.name = 'Times New Roman'
-                    table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].alignment = \
-                        WD_ALIGN_PARAGRAPH.CENTER
-                    n_row += 1
-    if cement_sig['quality'][len(cement_sig['quality']) - 1] > 0:
-        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].add_run(
-            str(round(cement_sig['depth'][len(cement_sig['quality']) - 1], 1)))
-        note.font.size = Pt(11)
-        note.font.name = 'Times New Roman'
-        table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        h = float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].text) - \
-            float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].text)
-        h_def = h_def + h
-        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].add_run(str(round(h, 1)))
-        note.font.size = Pt(11)
-        note.font.name = 'Times New Roman'
-        table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        if cement_sig['quality'][len(cement_sig['quality']) - 1] == 1:
-            defect = 'частичный цемент'
-        elif cement_sig['quality'][len(cement_sig['quality']) - 1] == 2:
-            defect = 'плохой цемент'
-        elif cement_sig['quality'][len(cement_sig['quality']) - 1] == 3:
-            defect = 'неопределённый цемент'
-        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run(defect)
-        note.font.size = Pt(11)
-        note.font.name = 'Times New Roman'
-        table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if ui.checkBox_golfstrim.checkState() == 2:
+        if cement_sig['quality'][0] == 0:
+            table2.rows[0].cells[0].tables[0].add_row()
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].add_run(str(round(
+                cement_sig['depth'][0], 1)))
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for i, quality in enumerate(cement_sig['quality']):
+            if 0 < i < (len(cement_sig['quality']) - 1):
+                if quality == 0:
+                    if cement_sig['quality'][i - 1] != 0:
+                        table2.rows[0].cells[0].tables[0].add_row()
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].add_run(
+                            str(round(cement_sig['depth'][i], 1)))
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                    if cement_sig['quality'][i + 1] != 0:
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].add_run(
+                            str(round(cement_sig['depth'][i], 1)))
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                        h = float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].text) - \
+                            float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].text)
+                        h_def = h_def + h
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].add_run(str(round(
+                            h, 1)))
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run('Качественный цемент')
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                        n_row += 1
+        if cement_sig['quality'][len(cement_sig['quality']) - 1] == 0:
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].add_run(
+                str(round(cement_sig['depth'][len(cement_sig['quality']) - 1], 1)))
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            h = float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].text) - \
+                float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].text)
+            h_def = h_def + h
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].add_run(str(round(h, 1)))
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run('Качественный цемент')
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    else:
+        if cement_sig['quality'][0] > 0:
+            table2.rows[0].cells[0].tables[0].add_row()
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].add_run(str(round(
+                cement_sig['depth'][0], 1)))
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for i, quality in enumerate(cement_sig['quality']):
+            if 0 < i < (len(cement_sig['quality']) - 1):
+                if quality > 0:
+                    if cement_sig['quality'][i-1] != quality:
+                        table2.rows[0].cells[0].tables[0].add_row()
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].add_run(
+                            str(round(cement_sig['depth'][i], 1)))
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                    if cement_sig['quality'][i + 1] != quality:
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].add_run(
+                            str(round(cement_sig['depth'][i], 1)))
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                        h = float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].text) - \
+                            float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].text)
+                        h_def = h_def + h
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].add_run(str(round(
+                            h, 1)))
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                        if quality == 1:
+                            defect = 'частичный цемент'
+                        elif quality == 2:
+                            defect = 'плохой цемент'
+                        elif quality == 3:
+                            defect = 'неопределённый цемент'
+                        note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run(defect)
+                        note.font.size = Pt(11)
+                        note.font.name = 'Times New Roman'
+                        table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].alignment = \
+                            WD_ALIGN_PARAGRAPH.CENTER
+                        n_row += 1
+        if cement_sig['quality'][len(cement_sig['quality']) - 1] > 0:
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].add_run(
+                str(round(cement_sig['depth'][len(cement_sig['quality']) - 1], 1)))
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            h = float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[1].paragraphs[0].text) - \
+                float(table2.rows[0].cells[0].tables[0].rows[n_row].cells[0].paragraphs[0].text)
+            h_def = h_def + h
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].add_run(str(round(h, 1)))
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            if cement_sig['quality'][len(cement_sig['quality']) - 1] == 1:
+                defect = 'частичный цемент'
+            elif cement_sig['quality'][len(cement_sig['quality']) - 1] == 2:
+                defect = 'плохой цемент'
+            elif cement_sig['quality'][len(cement_sig['quality']) - 1] == 3:
+                defect = 'неопределённый цемент'
+            note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run(defect)
+            note.font.size = Pt(11)
+            note.font.name = 'Times New Roman'
+            table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     # коэффициент затухания
-    k_def = 1 - h_def / int_study
+    if ui.checkBox_golfstrim.checkState() == 2:
+        k_def = h_def / int_study
+    else:
+        k_def = 1 - h_def / int_study
     table.rows[7].cells[0].paragraphs[0].runs[7].text = str(round(k_def, 1))
 
     if cement_sig['depth'].max() > 400:
@@ -2708,7 +2770,7 @@ def corr_matrix():
     if len(names) > 1:
         corr_gist = []
         for i in tabl_corr.corr():
-            corr_gist.append(tabl_corr.corr()[i].sum())
+            corr_gist.append(tabl_corr.corr()[i].mean())
 
         fig = plt.figure(figsize=(21, 12), dpi=80)
 
@@ -2720,8 +2782,8 @@ def corr_matrix():
 
         ax = plt.subplot2grid((1, 3), (0, 2))
         ax.barh(range(1, len(names)+1), corr_gist, height=1, align='edge', tick_label=names, color='#800026')
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
-        plt.xlim(np.min(corr_gist) - 0.5, np.max(corr_gist)+0.5)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(0.05))
+        plt.xlim(np.min(corr_gist) - 0.05, np.max(corr_gist)+0.05)
         plt.ylim(1, len(names)+1)
         ax.invert_yaxis()
         ax.grid()

@@ -581,9 +581,9 @@
    <widget class="QLabel" name="label_18">
     <property name="geometry">
      <rect>
-      <x>136</x>
+      <x>236</x>
       <y>550</y>
-      <width>521</width>
+      <width>421</width>
       <height>20</height>
      </rect>
     </property>
@@ -715,9 +715,9 @@
    <widget class="QLabel" name="label_22">
     <property name="geometry">
      <rect>
-      <x>800</x>
+      <x>900</x>
       <y>550</y>
-      <width>451</width>
+      <width>351</width>
       <height>20</height>
      </rect>
     </property>
@@ -2009,7 +2009,7 @@
     <property name="geometry">
      <rect>
       <x>1410</x>
-      <y>510</y>
+      <y>500</y>
       <width>491</width>
       <height>531</height>
      </rect>
@@ -2463,7 +2463,7 @@
        <rect>
         <x>20</x>
         <y>280</y>
-        <width>211</width>
+        <width>235</width>
         <height>51</height>
        </rect>
       </property>
@@ -3418,8 +3418,8 @@
      <widget class="QPushButton" name="pushButton_from_temp">
       <property name="geometry">
        <rect>
-        <x>290</x>
-        <y>410</y>
+        <x>170</x>
+        <y>400</y>
         <width>75</width>
         <height>23</height>
        </rect>
@@ -3436,8 +3436,8 @@
      <widget class="QPushButton" name="pushButton_save_cement">
       <property name="geometry">
        <rect>
-        <x>154</x>
-        <y>410</y>
+        <x>20</x>
+        <y>400</y>
         <width>131</width>
         <height>23</height>
        </rect>
@@ -3456,8 +3456,8 @@
      <widget class="QWidget" name="verticalLayoutWidget_2">
       <property name="geometry">
        <rect>
-        <x>154</x>
-        <y>70</y>
+        <x>20</x>
+        <y>50</y>
         <width>223</width>
         <height>346</height>
        </rect>
@@ -3574,7 +3574,7 @@
      <widget class="QLabel" name="label_59">
       <property name="geometry">
        <rect>
-        <x>194</x>
+        <x>70</x>
         <y>20</y>
         <width>141</width>
         <height>21</height>
@@ -3589,6 +3589,19 @@
       </property>
       <property name="text">
        <string>Цементограмма</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBox_golfstrim">
+      <property name="geometry">
+       <rect>
+        <x>260</x>
+        <y>50</y>
+        <width>101</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Гольфстрим</string>
       </property>
      </widget>
     </widget>
