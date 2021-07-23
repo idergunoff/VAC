@@ -46,6 +46,9 @@ columns = ['name', 'useful_depth', 'max_min', 'coeff_A', 'coeff_B', 'k_damp', 'm
 all_stat = pd.DataFrame(index=list(range(1, 12)), columns=columns)
 all_stat_old = pd.DataFrame(index=list(range(1, 16)), columns=columns)
 int_undefine_cement = []    # интервалы неопределенного цемента
+int_0_cement = []   # интервалы качественного цемента
+int_1_cement = []   # интервалы частичного цемента
+int_2_cement = []   # интервалы отсутствия цемента
 ui.dateEdit.setDate(datetime.datetime.today() - datetime.timedelta(days=1))
 k_oldtonew = 1  # коэффициент пересчета значений сигнала старого оборудования
 
@@ -349,6 +352,7 @@ def calc_to_int():
                                                                                           center=True).mean()  # усреднение
                 all_signals[str(i) + '_norm'] = all_signals[str(i) + '_envelope'] / (all_signals[str(i) + '_mean'] + coeff_norm)
                 # расчет цементограммы по усредняющей с коэффициентом
+                all_signals[str(i) + '_norm'] = all_signals[str(i) + '_norm'].diff().rolling(50, min_periods=1, center=True).mean()    #todo эксперимент
                 popt, pcov = curve_fit(func1, all_signals['depth'].iloc[int_min:int_max],  # расчет коэф для функции
                                        all_signals[str(i) + '_envelope'].iloc[int_min:int_max])
                 all_stat['coeff_A'][i] = popt[0]
@@ -365,6 +369,7 @@ def calc_to_int():
                 # коэффициента затухания и пресчет в размерность коэффициента качества
                 all_signals[str(i) + '_rel_ampl'] = (all_signals[str(i) + '_envelope-1'] - all_signals[str(i) + '_func']) /\
                                                     all_signals[str(i) + '_envelope-1']  # расчет цементограммы по функции
+                all_signals[str(i) + '_rel_ampl'] = all_signals[str(i) + '_rel_ampl'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
                 all_signals[str(i) + '_mean-1'] = all_signals[str(i) + '_mean'].shift(-1)  # сдвиг усредненного сигнала на 1
                 all_signals[str(i) + '_diff_norm'] = (all_signals[str(i) + '_mean-1'] - all_signals[str(i) + '_mean']) / \
                                                      all_signals[str(i) + '_mean']  # нормированная производная
@@ -428,6 +433,7 @@ def calc_to_int_old():
                 all_signals_old[str(i) + '-1'] = all_signals_old[i].shift(-1)  # сдвиг огибающ сигнала на 1
                 all_signals_old[str(i) + '_mean'] = all_signals_old[i].rolling(mean_win, min_periods=1, center=True).mean()
                 all_signals_old[str(i) + '_norm'] = all_signals_old[i] / (all_signals_old[str(i) + '_mean'] + coeff_norm)
+                all_signals_old[str(i) + '_norm'] = all_signals_old[str(i) + '_norm'].diff().rolling(50, min_periods=1, center=True).mean()    #todo эксперимент
                 # расчет цементограммы по усредняющей с коэффициентом
                 popt, pcov = curve_fit(func1, all_signals_old['depth'].iloc[int_min_old:int_max_old],
                                    all_signals_old[i].iloc[int_min_old:int_max_old])    # расчет коэф для функции
@@ -445,6 +451,7 @@ def calc_to_int_old():
                 all_stat_old['k_damp'][i] = np.exp(1) / all_signals_old['depth'][i_kdamp]
                 all_signals_old[str(i) + '_rel_ampl'] = (all_signals_old[str(i) + '-1'] -  # расчет цементограммы по функции
                                                          all_signals_old[str(i) + '_func']) / all_signals_old[str(i) + '-1']
+                all_signals_old[str(i) + '_rel_ampl'] = all_signals_old[str(i) + '_rel_ampl'].diff().rolling(50, min_periods=1, center=True).mean()    #todo эксперимент
                 all_signals_old[str(i) + '_mean-1'] = all_signals_old[str(i) + '_mean'].shift(-1)
                                                                                             # сдвиг усредненного сигнала
                 all_signals_old[str(i) + '_diff_norm'] = (all_signals_old[str(i) + '_mean-1'] -  # нормированная производная
@@ -555,27 +562,57 @@ def calc_defect(input_list_1, defect1, defect2):
     input_list = input_list_1.tolist()
     l_list = len(input_list)
     quality = [0]*l_list
-    begin = []
-    end = []
+
     try:
-        if input_list[0] > defect1:
-            begin.append(0)
-        for n, i in enumerate(input_list):
-            if 0 < n < (l_list - 1):
-                if i >= defect1:
-                    if input_list[n - 1] < defect1:
-                        begin.append(n)
-                    if input_list[n + 1] < defect1:
-                        end.append(n + 1)
-        if input_list[l_list - 1] >= defect1:
-            end.append(l_list)
-        for i in range(len(begin)):
-            if np.max(input_list[begin[i]:end[i]]) >= defect2:
-                quality[begin[i]:end[i]] = [2]*len(quality[begin[i]:end[i]])
-            else:
-                quality[begin[i]:end[i]] = [1]*len(quality[begin[i]:end[i]])
+        if ui.checkBox_abs_def.checkState() == 2:
+            for n, i in enumerate(input_list):
+                if defect1 <= i < defect2:
+                    quality[n] = 1
+                elif i >= defect2:
+                    quality[n] = 2
+        else:
+            begin = []
+            end = []
+            if input_list[0] > defect1:
+                begin.append(0)
+            for n, i in enumerate(input_list):
+                if 0 < n < (l_list - 1):
+                    if i >= defect1:
+                        if input_list[n - 1] < defect1:
+                            begin.append(n)
+                        if input_list[n + 1] < defect1:
+                            end.append(n + 1)
+            if input_list[l_list - 1] >= defect1:
+                end.append(l_list)
+            for i in range(len(begin)):
+                if np.max(input_list[begin[i]:end[i]]) >= defect2:
+                    quality[begin[i]:end[i]] = [2]*len(quality[begin[i]:end[i]])
+                else:
+                    quality[begin[i]:end[i]] = [1]*len(quality[begin[i]:end[i]])
+        for i in int_0_cement:
+            quality[i[0]:i[1]] = [0]*len(quality[i[0]:i[1]])
+        for i in int_1_cement:
+            quality[i[0]:i[1]] = [1]*len(quality[i[0]:i[1]])
+        for i in int_2_cement:
+            quality[i[0]:i[1]] = [2]*len(quality[i[0]:i[1]])
         for i in int_undefine_cement:
             quality[i[0]:i[1]] = [3]*len(quality[i[0]:i[1]])
+
+        """ удаляем дефекты мощностью менее 1 метра """
+        iq = quality[0]
+        start_q = 0
+        n_def = 0
+        for n, q in enumerate(quality):
+            if q != iq:
+                n_def += 1
+                if n - start_q < 17:
+                    if n_def != 1:
+                        quality[start_q:n] = [quality[start_q-1]] * len(quality[start_q:n])
+                    else:
+                        quality[start_q:n] = [q] * len(quality[start_q:n])
+                iq = q
+                start_q = n
+
     except IndexError:
         ui.label_info.setText('Ошибка расчета интервалов дефектов. Поробуйте уменьшить максимальную глубину. '
                                 'Например на 1 метр.')
@@ -814,6 +851,7 @@ def change_mean_win():
                 all_signals[str(i) + '_mean'] = all_signals[str(i) + '_envelope'].rolling(mean_win, min_periods=1,
                                                                                           center=True).mean()
                 all_signals[str(i) + '_norm'] = all_signals[str(i) + '_envelope'] / (all_signals[str(i) + '_mean'] + coeff_norm)
+                all_signals[str(i) + '_norm'] = all_signals[str(i) + '_norm'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
                 all_signals[str(i) + '_mean-1'] = all_signals[str(i) + '_mean'].shift(-1)
                 all_signals[str(i) + '_diff_norm'] = (all_signals[str(i) + '_mean-1'] - all_signals[str(i) + '_mean']) / \
                                                      all_signals[str(i) + '_mean']
@@ -838,6 +876,7 @@ def change_mean_win_old():
             if all_signals_old[i][1] != 0:
                 all_signals_old[str(i) + '_mean'] = all_signals_old[i].rolling(mean_win, min_periods=1, center=True).mean()
                 all_signals_old[str(i) + '_norm'] = all_signals_old[i] / (all_signals_old[str(i) + '_mean'] + coeff_norm)
+                all_signals_old[str(i) + '_norm'] = all_signals_old[str(i) + '_norm'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
                 all_signals_old[str(i) + '_mean-1'] = all_signals_old[str(i) + '_mean'].shift(-1)  # сдвиг усредненного сигнала
                 all_signals_old[str(i) + '_diff_norm'] = (all_signals_old[str(i) + '_mean-1'] -  # нормированная производная
                                                           all_signals_old[str(i) + '_mean']) / all_signals_old[str(i) + '_mean']
@@ -870,6 +909,7 @@ def change_func():
                 all_signals[str(i) + '_func'] = func1(all_signals['depth'], all_stat['coeff_A'][i]+kA, all_stat['coeff_B'][i]+kB) + coeff_func
                 all_signals[str(i) + '_rel_ampl'] = (all_signals[str(i) + '_envelope-1'] - all_signals[str(i) + '_func']) / \
                                                     all_signals[str(i) + '_envelope-1']
+                all_signals[str(i) + '_rel_ampl'] = all_signals[str(i) + '_rel_ampl'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
     choice_signal()
 
 
@@ -884,6 +924,7 @@ def change_func_old():
                 all_signals_old[str(i) + '_func'] = func1(all_signals_old['depth'], all_stat_old['coeff_A'][i]+kA, all_stat_old['coeff_B'][i]+kB) + coeff_func
                 all_signals_old[str(i) + '_rel_ampl'] = (all_signals_old[str(i) + '-1'] - all_signals_old[str(i) + '_func']) / \
                                                         all_signals_old[str(i) + '-1']  # расчет цементограммы по функции
+                all_signals_old[str(i) + '_rel_ampl'] = all_signals_old[str(i) + '_rel_ampl'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
     choice_signal()
 
 
@@ -1357,7 +1398,7 @@ def k_damp_detect(device, n_izm):
 
 def calc_int_cement():
     """ Выбор сигнала для цементограммы """
-    global cement_sig, int_undefine_cement, F, k_damp
+    global cement_sig, int_undefine_cement, int_0_cement, int_1_cement, int_2_cement, F, k_damp
     ui.doubleSpinBox_defect1.setEnabled(False)
     ui.doubleSpinBox_defect2.setEnabled(False)
     ui.doubleSpinBox_min_cement.setEnabled(False)
@@ -1417,6 +1458,9 @@ def calc_int_cement():
     ui.doubleSpinBox_undefine_max.setMaximum(cement_sig['depth'].max())
     ui.label_int_undefine.setText('Интервалы неопр. цемента:')
     int_undefine_cement = []
+    int_0_cement = []  # интервалы качественного цемента
+    int_1_cement = []  # интервалы частичного цемента
+    int_2_cement = []  # интервалы отсутствия цемента
     min_value = cement_sig['first_sig'].min()
     max_value = cement_sig['first_sig'].max()
     ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
@@ -1437,7 +1481,7 @@ def calc_int_cement():
 
 def cement_from_pdf_new():
     """ Выбор PDF сигнала для цементограммы """
-    global cement_sig, int_undefine_cement
+    global cement_sig, int_undefine_cement, int_0_cement, int_1_cement, int_2_cement
     if int_min < 86:
         cement_sig = pd.DataFrame(all_signals['depth'].iloc[86:int_max])
         cement_sig['first_sig'] = all_signals['pdf_diff_result'].iloc[86:int_max]
@@ -1454,6 +1498,9 @@ def cement_from_pdf_new():
     ui.doubleSpinBox_undefine_max.setMaximum(cement_sig['depth'].max())
     ui.label_int_undefine.setText('Интервалы неопр. цемента:')
     int_undefine_cement = []
+    int_0_cement = []  # интервалы качественного цемента
+    int_1_cement = []  # интервалы частичного цемента
+    int_2_cement = []  # интервалы отсутствия цемента
     min_value = cement_sig['first_sig'].min()
     max_value = cement_sig['first_sig'].max()
     ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
@@ -1470,7 +1517,7 @@ def cement_from_pdf_new():
 
 def cement_from_pdf_old():
     """ Выбор PDF сигнала для цементограммы """
-    global cement_sig, int_undefine_cement
+    global cement_sig, int_undefine_cement, int_0_cement, int_1_cement, int_2_cement
     if int_min_old < 86:
         cement_sig = pd.DataFrame(all_signals_old['depth'].iloc[86:int_max_old])
         cement_sig['first_sig'] = all_signals_old['pdf_diff_result'].iloc[86:int_max_old]
@@ -1487,6 +1534,9 @@ def cement_from_pdf_old():
     ui.doubleSpinBox_undefine_max.setMaximum(cement_sig['depth'].max())
     ui.label_int_undefine.setText('Интервалы неопр. цемента:')
     int_undefine_cement = []
+    int_0_cement = []  # интервалы качественного цемента
+    int_1_cement = []  # интервалы частичного цемента
+    int_2_cement = []  # интервалы отсутствия цемента
     min_value = cement_sig['first_sig'].min()
     max_value = cement_sig['first_sig'].max()
     ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
@@ -1534,8 +1584,8 @@ def corr_sig():
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x1_line.value())].tolist()[0]
     x2_index = cement_sig.index[
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x2_line.value())].tolist()[0]
-    cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min())
-    corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()))/\
+    cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min()) + 1
+    corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()) + 1)/\
                  cement_sig['plus_sig'].iloc[x1_index:x2_index+1].max()
     xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
                                                                               cement_sig['plus_sig'].iloc[
@@ -1552,7 +1602,7 @@ def corr_sig():
         corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
     cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
     cement_sig['plus_sig'] = cement_sig['plus_sig']*cement_sig['corr_coeff']
-    cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min())
+    cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min()) - 1
     draw_cement()
 
 
@@ -1562,8 +1612,8 @@ def corr_sig_bottom():
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x1_line.value())].tolist()[0]
     x2_index = cement_sig.index[
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x2_line.value())].tolist()[0]
-    cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min())
-    corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min())) / \
+    cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min()) + 1
+    corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()) + 1) / \
                      cement_sig['plus_sig'].iloc[x1_index:x2_index+1].min()
     xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
                                                                               cement_sig['plus_sig'].iloc[
@@ -1580,7 +1630,7 @@ def corr_sig_bottom():
         corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
     cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
     cement_sig['plus_sig'] = cement_sig['plus_sig'] * cement_sig['corr_coeff']
-    cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min())
+    cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min()) - 1
     draw_cement()
 
 
@@ -1598,14 +1648,26 @@ def plus_func():
 
 
 def add_undefine():
-    """ добавить интервал неопределенного цемента """
-    min_undefine = ui.doubleSpinBox_undefine_min.value()
-    max_undefine = ui.doubleSpinBox_undefine_max.value()
-    minund_i = cement_sig.index[cement_sig['depth'] == get_nearest_value(cement_sig['depth'], min_undefine)].tolist()[0]
-    maxund_i = cement_sig.index[cement_sig['depth'] == get_nearest_value(cement_sig['depth'], max_undefine)].tolist()[0]
-    int_undefine_cement.append([minund_i, maxund_i])
+    """ добавить интервал цемента вручную """
+    min_cem = ui.doubleSpinBox_undefine_min.value()
+    max_cem = ui.doubleSpinBox_undefine_max.value()
+    mincem_i = cement_sig.index[cement_sig['depth'] == get_nearest_value(cement_sig['depth'], min_cem)].tolist()[0]
+    maxcem_i = cement_sig.index[cement_sig['depth'] == get_nearest_value(cement_sig['depth'], max_cem)].tolist()[0]
     text_int = ui.label_int_undefine.text()
-    text_int = text_int + '\n' + str(min_undefine) + ' - ' + str(max_undefine) + ' м.'
+    cem = ''
+    if ui.radioButton_KC.isChecked():
+        cem = 'КЦ. '
+        int_0_cement.append([mincem_i, maxcem_i])
+    elif ui.radioButton_ChC.isChecked():
+        cem = 'ЧЦ. '
+        int_1_cement.append([mincem_i, maxcem_i])
+    elif ui.radioButton_OC.isChecked():
+        cem = 'ОЦ. '
+        int_2_cement.append([mincem_i, maxcem_i])
+    elif ui.radioButton_NC.isChecked():
+        cem = 'НЦ. '
+        int_undefine_cement.append([mincem_i, maxcem_i])
+    text_int = text_int + '\n' + cem + str(min_cem) + ' - ' + str(max_cem) + ' м.'
     ui.label_int_undefine.setText(text_int)
 
 
@@ -1624,13 +1686,13 @@ def cementogramma():
         plt.fill_betweenx(cement_sig['depth'], max_cement, cement_sig['corr_sig'], where=cement_sig['quality'] >= 1,
                           hatch='//', facecolor='#EDEDED')
         plt.fill_betweenx(cement_sig['depth'], max_cement, cement_sig['corr_sig'], where=cement_sig['quality'] >= 2,
-                          hatch='////', facecolor='#BDBDBD')
+                          hatch='\\\\\\\\', facecolor='#BDBDBD')
         plt.fill_betweenx(cement_sig['depth'], max_cement, cement_sig['corr_sig'], where=cement_sig['quality'] >= 3,
                           hatch='...', facecolor='white', edgecolor='grey')
         plt.fill_betweenx(cement_sig['depth'], min_cement, cement_sig['corr_sig'], where=cement_sig['quality'] >= 1,
                           hatch='//', facecolor='#EDEDED')
         plt.fill_betweenx(cement_sig['depth'], min_cement, cement_sig['corr_sig'], where=cement_sig['quality'] >= 2,
-                          hatch='////', facecolor='#BDBDBD')
+                          hatch='\\\\\\\\', facecolor='#BDBDBD')
         plt.fill_betweenx(cement_sig['depth'], min_cement, cement_sig['corr_sig'], where=cement_sig['quality'] >= 3,
                           hatch='...', facecolor='white', edgecolor='grey')
         plt.plot(cement_sig['corr_sig'], cement_sig['depth'], 'black')
@@ -1638,7 +1700,7 @@ def cementogramma():
         plt.xlim(min_cement, max_cement)
         plt.title('ЧЦ', fontsize=9)
         plt.title('КЦ', loc='left', fontsize=9)
-        plt.title('ПЦ', loc='right', fontsize=9)
+        plt.title('ОЦ', loc='right', fontsize=9)
         ax.get_xaxis().set_visible(False)
         plt.yticks(np.arange(up, up + 101, 5))
         plt.grid(axis='y', color='black', linestyle=':', linewidth=0.5)
@@ -1929,7 +1991,7 @@ def save_cement():
                         if quality == 1:
                             defect = 'частичный цемент'
                         elif quality == 2:
-                            defect = 'плохой цемент'
+                            defect = 'отсутствует цемент'
                         elif quality == 3:
                             defect = 'неопределённый цемент'
                         note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run(defect)
@@ -1954,7 +2016,7 @@ def save_cement():
             if cement_sig['quality'][len(cement_sig['quality']) - 1] == 1:
                 defect = 'частичный цемент'
             elif cement_sig['quality'][len(cement_sig['quality']) - 1] == 2:
-                defect = 'плохой цемент'
+                defect = 'отсутствует цемент'
             elif cement_sig['quality'][len(cement_sig['quality']) - 1] == 3:
                 defect = 'неопределённый цемент'
             note = table2.rows[0].cells[0].tables[0].rows[n_row].cells[3].paragraphs[0].add_run(defect)
@@ -2047,9 +2109,9 @@ def draw_total_cement(device, n_izm, n_graph, fig, count_sig):
     ax.axvline(x=defect1, linewidth=0.5, color='black', linestyle=':')
     ax.axvline(x=defect2, linewidth=0.5, color='black', linestyle=':')
     ax.fill_betweenx(depth, max_cement, curve, where=quality >= 1, hatch='//', facecolor='#EDEDED')
-    ax.fill_betweenx(depth, max_cement, curve, where=quality >= 2, hatch='////', facecolor='#BDBDBD')
+    ax.fill_betweenx(depth, max_cement, curve, where=quality >= 2, hatch='\\\\\\\\', facecolor='#BDBDBD')
     ax.fill_betweenx(depth, min_cement, curve, where=quality >= 1, hatch='//', facecolor='#EDEDED')
-    ax.fill_betweenx(depth, min_cement, curve, where=quality >= 2, hatch='////', facecolor='#BDBDBD')
+    ax.fill_betweenx(depth, min_cement, curve, where=quality >= 2, hatch='\\\\\\\\', facecolor='#BDBDBD')
     ax.plot(curve, depth, 'black')
     plt.ylim(min_depth, max_depth)
     plt.xlim(min_cement, max_cement)
@@ -2872,6 +2934,7 @@ ui.doubleSpinBox_kB_old.valueChanged.connect(change_func_old)
 ui.doubleSpinBox_int_max.valueChanged.connect(check_int_sig)
 ui.doubleSpinBox_int_max.valueChanged.connect(check_int_sig)
 ui.pushButton_int.clicked.connect(calc)
+ui.checkBox_abs_def.stateChanged.connect(calc)
 
 ui.pushButton_sum1.clicked.connect(sum1)
 ui.pushButton_sum2.clicked.connect(sum2)
