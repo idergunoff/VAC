@@ -1584,25 +1584,30 @@ def corr_sig():
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x1_line.value())].tolist()[0]
     x2_index = cement_sig.index[
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x2_line.value())].tolist()[0]
-    cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min()) + 1
-    corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()) + 1)/\
-                 cement_sig['plus_sig'].iloc[x1_index:x2_index+1].max()
-    xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
-                                                                              cement_sig['plus_sig'].iloc[
-                                                                              x1_index:x2_index + 1].max())].tolist()[0]
-    if ui.checkBox_lin_cor.checkState() == 2:
-        interp_method = 'linear'
+    if ui.checkBox_shift_corr.checkState() == 2:
+        coef_shift = cement_sig['first_sig'].iloc[x1_index:x2_index+1].max() - ui.doubleSpinBox_y_line.value()
+        cement_sig['corr_sig'] = cement_sig['first_sig'].copy()
+        cement_sig['corr_sig'].iloc[x1_index:x2_index+1] = cement_sig['first_sig'].iloc[x1_index:x2_index+1] - coef_shift
     else:
-        interp_method = 'quadratic'
-    if x1_index == xmax_index:
-        corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
-    elif xmax_index == x2_index:
-        corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
-    else:
-        corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
-    cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
-    cement_sig['plus_sig'] = cement_sig['plus_sig']*cement_sig['corr_coeff']
-    cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min()) - 1
+        cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min()) + 1
+        corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()) + 1)/\
+                     cement_sig['plus_sig'].iloc[x1_index:x2_index+1].max()
+        xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
+                                                                                  cement_sig['plus_sig'].iloc[
+                                                                                  x1_index:x2_index + 1].max())].tolist()[0]
+        if ui.checkBox_lin_cor.checkState() == 2:
+            interp_method = 'linear'
+        else:
+            interp_method = 'quadratic'
+        if x1_index == xmax_index:
+            corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
+        elif xmax_index == x2_index:
+            corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
+        else:
+            corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
+        cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
+        cement_sig['plus_sig'] = cement_sig['plus_sig']*cement_sig['corr_coeff']
+        cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min()) - 1
     draw_cement()
 
 
@@ -1612,25 +1617,30 @@ def corr_sig_bottom():
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x1_line.value())].tolist()[0]
     x2_index = cement_sig.index[
         cement_sig['depth'] == get_nearest_value(cement_sig['depth'], ui.doubleSpinBox_x2_line.value())].tolist()[0]
-    cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min()) + 1
-    corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()) + 1) / \
-                     cement_sig['plus_sig'].iloc[x1_index:x2_index+1].min()
-    xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
-                                                                              cement_sig['plus_sig'].iloc[
-                                                                              x1_index:x2_index+1].min())].tolist()[0]
-    if ui.checkBox_lin_cor.checkState() == 2:
-        interp_method = 'linear'
+    if ui.checkBox_shift_corr.checkState() == 2:
+        coef_shift = cement_sig['first_sig'].iloc[x1_index:x2_index+1].min() - ui.doubleSpinBox_y_line.value()
+        cement_sig['corr_sig'] = cement_sig['first_sig'].copy()
+        cement_sig['corr_sig'].iloc[x1_index:x2_index+1] = cement_sig['first_sig'].iloc[x1_index:x2_index+1] - coef_shift
     else:
-        interp_method = 'quadratic'
-    if x1_index == xmax_index:
-        corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
-    elif xmax_index == x2_index:
-        corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
-    else:
-        corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
-    cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
-    cement_sig['plus_sig'] = cement_sig['plus_sig'] * cement_sig['corr_coeff']
-    cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min()) - 1
+        cement_sig['plus_sig'] = cement_sig['first_sig'] + abs(cement_sig['first_sig'].min()) + 1
+        corr_coeff_max = (ui.doubleSpinBox_y_line.value() + abs(cement_sig['first_sig'].min()) + 1) / \
+                         cement_sig['plus_sig'].iloc[x1_index:x2_index+1].min()
+        xmax_index = cement_sig.index[cement_sig['plus_sig'] == get_nearest_value(cement_sig['plus_sig'],
+                                                                                  cement_sig['plus_sig'].iloc[
+                                                                                  x1_index:x2_index+1].min())].tolist()[0]
+        if ui.checkBox_lin_cor.checkState() == 2:
+            interp_method = 'linear'
+        else:
+            interp_method = 'quadratic'
+        if x1_index == xmax_index:
+            corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
+        elif xmax_index == x2_index:
+            corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
+        else:
+            corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
+        cement_sig['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
+        cement_sig['plus_sig'] = cement_sig['plus_sig'] * cement_sig['corr_coeff']
+        cement_sig['corr_sig'] = cement_sig['plus_sig'] - abs(cement_sig['first_sig'].min()) - 1
     draw_cement()
 
 

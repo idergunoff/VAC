@@ -3231,7 +3231,7 @@
      <widget class="QPushButton" name="pushButton_corr_sig_bottom">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>190</x>
         <y>340</y>
         <width>61</width>
         <height>24</height>
@@ -3319,7 +3319,7 @@
        <rect>
         <x>20</x>
         <y>344</y>
-        <width>61</width>
+        <width>41</width>
         <height>17</height>
        </rect>
       </property>
@@ -3327,7 +3327,7 @@
        <string>вытягивание в линейном режиме</string>
       </property>
       <property name="text">
-       <string>линейно</string>
+       <string>лин</string>
       </property>
      </widget>
      <widget class="QCheckBox" name="checkBox_corr_mode">
@@ -3358,7 +3358,7 @@
      <widget class="QPushButton" name="pushButton_corr_sig">
       <property name="geometry">
        <rect>
-        <x>90</x>
+        <x>130</x>
         <y>340</y>
         <width>61</width>
         <height>24</height>
@@ -3481,6 +3481,22 @@
       </property>
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBox_shift_corr">
+      <property name="geometry">
+       <rect>
+        <x>70</x>
+        <y>344</y>
+        <width>61</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>сдвиг участка цементограммы</string>
+      </property>
+      <property name="text">
+       <string>сдвиг</string>
       </property>
      </widget>
     </widget>
