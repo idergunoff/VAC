@@ -63,7 +63,9 @@ manifest = {'upstream': '6a99815036984389e51d8f0c934069af4332e278',
             'device': args.device, 'case': args.case, 'python': platform.python_version(),
             'platform': platform.platform(), 'dependencies': {d.metadata['Name']: d.version for d in importlib.metadata.distributions()},
             'source_sha256': {p: sha(ROOT / p) for p in ['VAC_python.py', 'VAC_dialog.py', 'responsive_layout.py', 'standard.py', 'vac/resources/template.docx',
-                'vac/reference.py', 'vac/app.py', 'vac/controller.py', 'vac/calculation.py', 'vac/domain/models.py', 'vac/domain/state.py']},
+                'vac/reference.py', 'vac/app.py', 'vac/controller.py', 'vac/calculation.py', 'vac/domain/models.py', 'vac/domain/state.py',
+                'vac/gui/plotting.py', 'vac/reporting/figures.py', 'vac/reporting/word.py',
+                'vac/io/exports.py', 'vac/io/legacy_options.py']},
             'inputs': [], 'read_order': [], 'steps': [], 'qt_errors': []}
 original_open = builtins.open
 original_exec = QtWidgets.QApplication.exec_
