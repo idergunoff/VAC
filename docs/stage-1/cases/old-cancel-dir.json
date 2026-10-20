@@ -1,0 +1,117 @@
+{
+  "upstream": "6a99815036984389e51d8f0c934069af4332e278",
+  "compatibility": "ENV-01 int(auto_mean_win), see compatibility.md",
+  "device": "old",
+  "case": "cancel-dir",
+  "python": "3.12.14",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "dependencies": {
+    "PyQt5": "5.15.11",
+    "contourpy": "1.3.3",
+    "cycler": "0.12.1",
+    "fonttools": "4.67.0",
+    "kiwisolver": "1.5.1",
+    "lxml": "6.1.3",
+    "matplotlib": "3.9.4",
+    "numpy": "1.26.4",
+    "packaging": "26.3",
+    "pandas": "2.2.3",
+    "pillow": "13.0.0",
+    "pyparsing": "3.3.3",
+    "PyQt5-Qt5": "5.15.19",
+    "PyQt5_sip": "12.20.0",
+    "pyqtgraph": "0.13.7",
+    "python-dateutil": "2.9.0.post0",
+    "python-docx": "1.1.2",
+    "pytz": "2026.5",
+    "scipy": "1.13.1",
+    "seaborn": "0.13.2",
+    "six": "1.17.0",
+    "typing_extensions": "4.16.0",
+    "tzdata": "2026.5"
+  },
+  "source_sha256": {
+    "VAC_python.py": "2d404dd09098e3c5c90c3bd98960872c8136bc118613a21bdcc4d890b7d1fd98",
+    "VAC_dialog.py": "86eb3eff7940428dc28867067417fea4fc60e354d2be39f6f7546084a4809a28",
+    "responsive_layout.py": "4ca127ff1e2efe618a6d5dc8938a594e75e94829b865403baa0abc903fe892bc",
+    "standard.py": "85ed804553b6a59ce7bbc06ea8962631072d3d433cb1bc5e036def4bacd02c05",
+    "template.docx": "76d06caa0512de94b3d2d6a119dc76611e54464a352ee29631d8fc967d07b94b"
+  },
+  "inputs": [
+    {
+      "path": "T_14_01.TWF",
+      "sha256": "f29c47fbb631a8a2b712e995baab6a56a435800d98914c51694b9b8dee836aad",
+      "size": 1678
+    },
+    {
+      "path": "T_14_03.TWF",
+      "sha256": "231488402e797076df701a06950ffa9ad216fe849f182791f70cf7bb60f3e228",
+      "size": 1678
+    },
+    {
+      "path": "T_14_04.TWF",
+      "sha256": "88679d41bccba12d90060a37dc866769b986d4fe3859fe194dd0359ed6dbc82e",
+      "size": 1678
+    },
+    {
+      "path": "T_14_05.TWF",
+      "sha256": "ad74fa1a148b6cdc0507add3e366e272143921ae85a8850df13c03cc83b58b9d",
+      "size": 1678
+    },
+    {
+      "path": "T_14_06.TWF",
+      "sha256": "0fd5a1604ad0a758b6bb71e0efa01ab16a13422d5025b4eec42b35913733b7f4",
+      "size": 1678
+    },
+    {
+      "path": "T_14_21.TWF",
+      "sha256": "3ee9a0c6fd2661d43caa756437e15eb5252a9a71f121579b39a17f071fb5b1ed",
+      "size": 1678
+    },
+    {
+      "path": "T_14_22.TWF",
+      "sha256": "f84d0d12df4554ee5b8e77a29c037548c51e1818619e61952ae1b7fe1edc7c5e",
+      "size": 1678
+    },
+    {
+      "path": "T_14_23.TWF",
+      "sha256": "d063733173bd87b854731ce9367b0f013aa04dbf939b06ee6c397c1f7742762c",
+      "size": 1678
+    },
+    {
+      "path": "T_14_24.TWF",
+      "sha256": "3ba34c2916052fe78cf9ea9ccbeb982025379cc9cf6fe14f1896b1fe1e04ee73",
+      "size": 1678
+    },
+    {
+      "path": "T_14_38.TWF",
+      "sha256": "524e253d0fa9a9e00074bf1d5d43769cfc668b82b4df7798cd102bc2883c56bb",
+      "size": 1678
+    },
+    {
+      "path": "T_14_39.TWF",
+      "sha256": "8d3043ab6c172570705805e425268f59df17539c7957c64a9d4c292ccc4d1eec",
+      "size": 1678
+    },
+    {
+      "path": "T_14_40.TWF",
+      "sha256": "60539a1f25f6025b476a419fa6cb5f103cd8d1a710ef3cc1bf6c1cc1377618e4",
+      "size": 1678
+    },
+    {
+      "path": "T_14_41.TWF",
+      "sha256": "94a067768dd511befe35956829d00ebc3160cf4e6d03eacf64e1c2a44c3700f3",
+      "size": 1678
+    }
+  ],
+  "read_order": [],
+  "steps": [
+    {
+      "name": "cancel-dir",
+      "status": "error",
+      "type": "FileNotFoundError",
+      "message": "[Errno 2] No such file or directory: ''"
+    }
+  ],
+  "qt_errors": []
+}
