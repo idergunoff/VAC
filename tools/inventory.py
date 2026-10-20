@@ -6,9 +6,9 @@ from pathlib import Path
 import struct
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'docs' / 'stage-0'
+OUT = ROOT / 'work' / 'inventory'
 OUT.mkdir(parents=True, exist_ok=True)
-source = (ROOT / 'VAC_python.py').read_text(encoding='utf-8')
+source = (ROOT / 'vac/legacy.py').read_text(encoding='utf-8')
 tree = ast.parse(source)
 functions = [n for n in tree.body if isinstance(n, ast.FunctionDef)]
 names = {n.name for n in functions}
@@ -22,7 +22,7 @@ for f in functions:
             state.update(n.names)
 lines = ['# Карта функций и состояния', '',
          'Сгенерировано `python tools/inventory.py` из AST основного файла. '
-         'Строки относятся к неизменённому VAC_python.py. Чтение/запись имён — синтаксические; '
+         'Строки относятся к vac/legacy.py. Чтение/запись имён — синтаксические; '
          'изменение столбцов и вызовы методов включены в «возможные изменения». '
          'Это не анализ потока выполнения: aliases, сигналы Qt и переданные аргументы требуют просмотра кода.', '',
          '## Функции', '', '| Функция:строка | Назначение | Прямые вызовы функций приложения |',
