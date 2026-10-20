@@ -4,6 +4,8 @@ os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 from pathlib import Path
 import sys
 import unittest
+import tempfile
+import numpy as np
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import pandas as pd
@@ -52,6 +54,51 @@ class ControllerTests(unittest.TestCase):
         finally:
             w1.close()
             w2.close()
+
+    def test_failed_reads_preserve_the_open_research(self):
+        window, controller = create_window()
+        try:
+            with tempfile.TemporaryDirectory(prefix='VAC ошибки чтения ') as tmp:
+                invalid = Path(tmp) / 'ошибка'
+                invalid.write_bytes(b'not a measurement')
+                for equipment, suffix in [('new', ''), ('old', '_old')]:
+                    measurements = getattr(controller.state, equipment)
+                    measurements.signals = pd.DataFrame({'depth': [0., 1.], 1: [2., 3.]})
+                    controller.state.interpretation.table = pd.DataFrame({'depth': [1.]})
+                    interpretation = controller.state.interpretation
+                    with patch.object(QtWidgets.QFileDialog, 'getExistingDirectory', return_value=tmp):
+                        getattr(controller, 'open_dir' + suffix)()
+                    self.assertIs(getattr(controller.state, equipment), measurements)
+                    self.assertIs(controller.state.interpretation, interpretation)
+                    self.assertEqual(controller.ui.label_info.styleSheet(), 'color:red')
+                    with patch.object(QtWidgets.QFileDialog, 'getOpenFileName', return_value=(str(invalid), '')):
+                        getattr(controller, 'open_sig' + suffix)()
+                    self.assertIs(getattr(controller.state, equipment), measurements)
+                    self.assertIs(controller.state.interpretation, interpretation)
+        finally:
+            window.close()
+
+    def test_committing_a_correction_keeps_automatic_curve(self):
+        window, controller = create_window()
+        try:
+            table = pd.DataFrame({'depth': np.arange(100, dtype=float),
+                                  'first_sig': np.sin(np.arange(100) / 8),
+                                  'corr_sig': np.sin(np.arange(100) / 8),
+                                  'func': np.ones(100), 'corr_coeff': np.ones(100)})
+            controller.state.interpretation.table = table.copy(deep=True)
+            controller.state.interpretation.automatic_table = table.copy(deep=True)
+            controller.bind_interpretation('new', '1')
+            controller.ui.checkBox_shift_corr.setChecked(True)
+            controller.ui.doubleSpinBox_x1_line.setValue(10)
+            controller.ui.doubleSpinBox_x2_line.setValue(50)
+            with patch.object(controller, 'draw_cement'):
+                controller.corr_sig()
+                controller.fix_corr()
+            pd.testing.assert_frame_equal(controller.state.interpretation.automatic_table, table)
+            self.assertFalse(controller.state.interpretation.table.first_sig.equals(table.first_sig))
+            self.assertEqual([c.operation for c in controller.state.interpretation.corrections], ['corr_sig', 'fix_corr'])
+        finally:
+            window.close()
 
 
 if __name__ == '__main__':

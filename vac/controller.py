@@ -3,7 +3,6 @@ import os
 import sys
 
 import pickle   # бинарные файлы
-import struct
 
 import pandas as pd
 import numpy as np
@@ -13,8 +12,6 @@ from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from copy import deepcopy   # копирование таблицы в отчете WORD
 
-from scipy.interpolate import interp1d
-from scipy.optimize import curve_fit
 from scipy import stats as st
 
 from PyQt5 import uic
@@ -35,8 +32,10 @@ from .reference import good_new, good_old, bad_new, bad_old, depth_new, depth_ol
 from .resources import template_path
 from vac.domain.state import ApplicationState
 from vac.domain.models import ProcessingParameters, ProcessingResult, SignalIdentity, ManualCorrection, ReportDetails
-from vac.calculation import calculate_new, calculate_old, classify, ClassificationError
+from vac.calculation import calculate_new, calculate_old, classify, ClassificationError, func1, get_nearest_value, calc_max_int
 from vac.domain.models import QualityIntervals
+from .io import lvm, twf
+from .processing import preprocessing, sums, pdf, interpretation, corrections
 
 TEMPLATE_PATH = template_path()
 
@@ -253,45 +252,18 @@ class Controller:
         dir_name = QFileDialog.getExistingDirectory()
         if not dir_name:
             return
+        try:
+            loaded, all_files = lvm.load_directory(dir_name, self.ui.spinBox_mean.value())
+        except (ValueError, OSError, KeyError, IndexError) as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
+            return
         self.begin_load('new')
+        loaded.revision = self.state.new.revision
+        self.state.new = loaded
         self.ui.progressBar.reset()
         self.ui.label_info.setText('Загрузка данных нового оборудования...')
         self.ui.label_info.setStyleSheet('color:blue')
-        self.state.new.signals = pd.DataFrame()  # при открытии новой директории таблица all_signals очищается
-        all_files = list()
-        n = 1
-        checkboxes = self.ui.new_device.findChildren(QCheckBox)
-        for item in checkboxes:
-            item.setEnabled(False)
-            item.setCheckState(0)
-            item.setStyleSheet('background: #f0f0f0')
-        mean = self.ui.spinBox_mean.value()
-        for dir_i in os.walk(dir_name):  # перебор директорий
-            for file in sorted(dir_i[-1], reverse=True):  # перебор файлов в директории с обратной сортировкой
-                if file.endswith('_5150m_c.lvm'):  # выбраем и заносим в список только файлы с расширением *.lvm
-                    all_files.append(file)
-                    signal = pd.read_table(os.path.join(dir_i[0], file), delimiter='\t', header=None)  # считываем таблицу
-                    self.state.new.signals['depth'] = signal[1]
-                    if n == 9:  # если записаны 8 файлов, последний файл записываем в шум и создаем колонку с глубиной
-                        self.state.new.signals['noise'] = np.abs(signal[2])
-                    else:
-                        self.state.new.signals[n] = np.abs(signal[2])
-                        n_max = ((np.diff(np.sign(np.diff(self.state.new.signals[n]))) < 0).nonzero()[
-                                     0] + 1).tolist()  # находим максимумы
-                        n_max.insert(0, 0)  # добавляем начальную и конечную точки                              # сигнала
-                        # n_max = n_max[::3]
-                        n_max.append(int(len(self.state.new.signals[n])) - 1)
-                        max_x = self.state.new.signals.loc[n_max, 'depth']  # выбираем x и y максимумов
-                        max_y = self.state.new.signals.loc[n_max, n]
-                        envelope = interp1d(max_x, max_y,
-                                            kind='linear')  # выполняем интерполяцию по максимуму, получая огибающую
-                        self.state.new.signals[str(n) + '_envelope'] = envelope(self.state.new.signals['depth'])
-                        self.state.new.signals[str(n) + '_envelope'] = self.state.new.signals[str(n) + '_envelope'].rolling(mean, min_periods=1,
-                                                                                                      center=True).mean()  # усреднение
-                        self.state.new.statistics['name'][n] = file  # записываем названия файлов в таблицу статистики
-                        self.state.new.statistics['max_h'][n] = self.state.new.signals['depth'].max()
-                    n += 1
-
         self.ui.label_direct.setText("<b>" + dir_name + ":</b>")
         self.ui.label_info.setText('Загружены данные нового оборудования!')
         self.ui.label_info.setStyleSheet('color:green')
@@ -324,46 +296,18 @@ class Controller:
         dir_name = QFileDialog.getExistingDirectory()
         if not dir_name:
             return
+        try:
+            loaded, all_files = twf.load_directory(dir_name)
+        except (ValueError, OSError, KeyError, IndexError) as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
+            return
         self.begin_load('old')
+        loaded.revision = self.state.old.revision
+        self.state.old = loaded
         self.ui.progressBar.reset()
         self.ui.label_info.setText('Загрузка данных старого оборудования...')
         self.ui.label_info.setStyleSheet('color:blue')
-        self.state.old.signals = pd.DataFrame()  # при открытии новой директории таблица all_signals_old очищается
-        checkboxes = self.ui.old_device.findChildren(QCheckBox)
-        for item in checkboxes:
-            item.setEnabled(False)
-            item.setCheckState(0)
-            item.setStyleSheet('background: #f0f0f0')
-        all_files = list()
-        n = 1
-        for file in os.listdir(dir_name):  # перебор файлов в папке
-            if file.endswith('.TWF'):  # выбраем и заносим в список только файлы с расширением *.TWF
-                all_files.append(file)
-                f = open(os.path.join(dir_name, file), 'rb')    # открываем бинарный файл для чтения
-                signal_b = f.read()[130:]                       # считываем байты кроме первых 130
-                len_signal = int(len(signal_b) / 4)             # количество чисел
-                uiat_b = '<' + str(len_signal) + 'i'          # формат файла для чтения
-                signal = struct.unpack(uiat_b, signal_b)      # пересчет байтов в кортеж сигнала
-                f.close()  # закрываем файл
-                max_gl = len_signal*0.515
-                if n == 1:  # первый файл записываем в шум и создаем колонку с глубиной
-                    signal_f = interp1d(np.linspace(0, max_gl, len_signal, endpoint=True), signal, kind='linear')
-                    self.state.old.signals['depth'] = np.arange(0, max_gl, 0.05839)  # шкала глубин через 0.515 метров
-                    self.state.old.signals['noise'] = signal_f(self.state.old.signals['depth'])
-                else:
-                    signal_f = interp1d(np.linspace(0, max_gl, len_signal, endpoint=True), signal, kind='linear')
-                    self.state.old.signals[n-1] = signal_f(self.state.old.signals['depth'])
-                    self.state.old.statistics['name'][n-1] = file  # записываем названия файлов в таблицу статистики
-                    self.state.old.statistics['max_h'][n-1] = max_gl
-                n += 1
-                if n == 14:     # если считано 13 файлов выходим из цикла
-                    break
-        col_max = self.state.old.signals.columns[self.state.old.signals.loc[0] == self.state.old.signals.loc[0].max()].tolist()[0]
-        k_oldtonew = self.state.old.signals[col_max].max()/5
-        self.state.old.signals['noise'] = self.state.old.signals['noise']/k_oldtonew
-        for i in range(1, len(self.state.old.signals.loc[0])-1):
-            self.state.old.signals[i] = self.state.old.signals[i]/k_oldtonew
-
         self.ui.label_direct_old.setText("<b>" + dir_name + ":</b>")
         self.ui.label_info.setText('Загружены данные старого оборудования!')
         self.ui.label_info.setStyleSheet('color:green')
@@ -392,6 +336,12 @@ class Controller:
         file_name = QFileDialog.getOpenFileName(filter='*.lvm')
         if not file_name[0]:
             return
+        try:
+            signal = lvm.read_lvm(file_name[0])
+        except (ValueError, OSError) as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
+            return
         self.invalidate('new')
         checkboxes = self.ui.new_device.findChildren(QCheckBox)
         n_chek = 0
@@ -408,15 +358,7 @@ class Controller:
             self.ui.pushButton_sum1.setEnabled(True)
             self.ui.pushButton_sum2.setEnabled(True)
             self.ui.pushButton_sum3.setEnabled(True)
-        signal = pd.read_table(file_name[0], delimiter='\t', header=None)  # считываем таблицу
-        if 'depth' in self.state.new.signals:
-            if self.state.new.signals['depth'].max() < signal[1].max():
-                add_tab = pd.DataFrame(columns=self.state.new.signals.columns, index=range(len(self.state.new.signals['depth']), len(signal[1])))
-                self.state.new.signals = pd.concat([self.state.new.signals, add_tab])
-                self.state.new.signals['depth'] = signal[1]
-                self.set_int(self.state.new.signals)
-        else:
-            self.state.new.signals['depth'] = signal[1]
+        if preprocessing.extend_lvm_axis(self.state.new, signal):
             self.set_int(self.state.new.signals)
         mean = self.ui.spinBox_mean.value()
         for item in checkboxes:
@@ -424,15 +366,8 @@ class Controller:
                 n_sig = int(item.text()[0:2])
                 item.setText(str(n_sig) + ' ' + file_name[0].split('/')[-1][:20])
                 self.state.new.signals[n_sig] = np.abs(signal[2])
-                n_max = ((np.diff(np.sign(np.diff(self.state.new.signals[n_sig]))) < 0).nonzero()[0] + 1).tolist()  # находим максимумы
-                n_max.insert(0, 0)  # добавляем начальную и конечную точки                              # сигнала
-                n_max.append(int(len(self.state.new.signals[n_sig])) - 1)
-                max_x = self.state.new.signals.loc[n_max, 'depth']  # выбираем x и y максимумов
-                max_y = self.state.new.signals.loc[n_max, n_sig]
-                envelope = interp1d(max_x, max_y, kind='linear', bounds_error=False)  # выполняем интерполяцию по максимуму, получая огибающую
-                self.state.new.signals[str(n_sig) + '_envelope'] = envelope(self.state.new.signals['depth'])
-                self.state.new.signals[str(n_sig) + '_envelope'] = self.state.new.signals[str(n_sig) + '_envelope'].rolling(mean, min_periods=1,
-                                                                                      center=True).mean()  # усреднение
+                self.state.new.signals[str(n_sig) + '_envelope'] = preprocessing.envelope(
+                    self.state.new.signals['depth'], self.state.new.signals[n_sig], mean, bounds_error=False)
                 self.state.new.statistics['name'][n_sig] = item.text()
                 self.state.new.statistics['max_h'][n_sig] = signal[1].max()
                 item.setEnabled(True)
@@ -449,16 +384,8 @@ class Controller:
         for item in checkboxes:
             if item.isEnabled() and int(item.text()[0:2]) not in [9, 10, 11]:
                 n_sig = int(item.text()[0:2])
-                n_max = ((np.diff(np.sign(np.diff(self.state.new.signals[n_sig]))) < 0).nonzero()[0] + 1).tolist()  # находим максимумы
-                n_max.insert(0, 0)  # добавляем начальную и конечную точки                              # сигнала
-                n_max.append(int(len(self.state.new.signals[n_sig])) - 1)
-                max_x = self.state.new.signals.loc[n_max, 'depth']  # выбираем x и y максимумов
-                max_y = self.state.new.signals.loc[n_max, n_sig]
-                envelope = interp1d(max_x, max_y, kind='linear',
-                                    bounds_error=False)  # выполняем интерполяцию по максимуму, получая огибающую
-                self.state.new.signals[str(n_sig) + '_envelope'] = envelope(self.state.new.signals['depth'])
-                self.state.new.signals[str(n_sig) + '_envelope'] = self.state.new.signals[str(n_sig) + '_envelope'].rolling(mean, min_periods=1,
-                                                                                                      center=True).mean()  # усреднение
+                self.state.new.signals[str(n_sig) + '_envelope'] = preprocessing.envelope(
+                    self.state.new.signals['depth'], self.state.new.signals[n_sig], mean, bounds_error=False)
         self.calc_to_int()
 
 
@@ -466,6 +393,12 @@ class Controller:
         """ функция выбора файлов измерений в формате *.TWF по одному """
         file_name = QFileDialog.getOpenFileName(filter='*.TWF')
         if not file_name[0]:
+            return
+        try:
+            signal = twf.read_twf(file_name[0])
+        except (ValueError, OSError) as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
             return
         self.invalidate('old')
         checkboxes = self.ui.old_device.findChildren(QCheckBox)
@@ -483,23 +416,10 @@ class Controller:
             self.ui.pushButton_sum1_old.setEnabled(True)
             self.ui.pushButton_sum2_old.setEnabled(True)
             self.ui.pushButton_sum3_old.setEnabled(True)
-        f = open(file_name[0], 'rb')  # открываем бинарный файл для чтения
-        signal_b = f.read()[130:]  # считываем байты кроме первых 130
-        len_signal = int(len(signal_b) / 4)  # количество чисел
-        uiat_b = '<' + str(len_signal) + 'i'  # формат файла для чтения
-        signal = struct.unpack(uiat_b, signal_b)  # пересчет байтов в кортеж сигнала
-        f.close()  # закрываем файл
+        len_signal = len(signal)
         max_gl = len_signal * 0.515
 
-        if 'depth' in self.state.old.signals:
-            if self.state.old.signals['depth'].max() + 0.515 < max_gl:
-                add_tab = pd.DataFrame(columns=self.state.old.signals.columns, index=range(len(self.state.old.signals['depth']),
-                                                                                    int(max_gl/0.05839)+1))
-                self.state.old.signals = pd.concat([self.state.old.signals, add_tab])
-                self.state.old.signals['depth'] = np.arange(0, max_gl, 0.05839)  # шкала глубин через 0.05839 метров
-                self.set_int(self.state.old.signals)
-        else:
-            self.state.old.signals['depth'] = np.arange(0, max_gl, 0.05839)
+        if preprocessing.extend_twf_axis(self.state.old, len_signal):
             self.set_int(self.state.old.signals)
         list_boxes = []
         for item in checkboxes:
@@ -507,8 +427,7 @@ class Controller:
                 list_boxes.append(int(item.text()[0:2]))
         list_boxes.sort()
         n_sig = list_boxes[0]
-        signal_f = interp1d(np.linspace(0, max_gl, len_signal), signal, kind='linear', bounds_error=False)
-        self.state.old.signals[n_sig] = signal_f(self.state.old.signals['depth'])
+        self.state.old.signals[n_sig] = preprocessing.interpolate_twf(signal, self.state.old.signals['depth'], bounds_error=False)
         self.state.old.statistics['max_h'][n_sig] = max_gl
         for item in checkboxes:
             if int(item.text()[0:2]) == n_sig:
@@ -517,9 +436,7 @@ class Controller:
                 item.setEnabled(True)
                 item.setCheckState(2)
                 break
-        if self.state.old.scale == 1:
-            self.state.old.scale = self.state.old.signals[n_sig].max() / 5
-        self.state.old.signals[n_sig] = self.state.old.signals[n_sig] / self.state.old.scale
+        preprocessing.scale_single_twf(self.state.old, n_sig)
         self.calc_to_int_old()
 
 
@@ -528,16 +445,8 @@ class Controller:
             return
         """ Функция пересчета исходного сигнала, расчет цементограмм """
 
-        coeff_norm = self.ui.doubleSpinBox_coeff_norm.value()  # считываем значения коэффициентов из спинбоксов
-        coeff_func = self.ui.doubleSpinBox_coeff_func.value()
-        coeff_dif_res = self.ui.spinBox_coeff_dif_res.value()
 
-        self.state.new.interval_min = self.state.new.signals.index[self.state.new.signals['depth'] ==  # определяем интервалы индексов min - max
-                                    self.get_nearest_value(self.state.new.signals['depth'], self.ui.doubleSpinBox_int_min.value())].tolist()[0]
-        self.state.new.interval_max = self.state.new.signals.index[self.state.new.signals['depth'] ==
-                                    self.get_nearest_value(self.state.new.signals['depth'], self.ui.doubleSpinBox_int_max.value())].tolist()[0]
-        # расчет рекомендуемого окна усреднения по формуле из Щелкуна, установка значения в спинбок
-        auto_mean_win = (self.state.new.interval_max - self.state.new.interval_min) / (1 + 3.322 * np.log(self.state.new.interval_max - self.state.new.interval_min)) / 2.302585
+        auto_mean_win = preprocessing.prepare_interval(self.state.new, self.ui.doubleSpinBox_int_min.value(), self.ui.doubleSpinBox_int_max.value())
         self.ui.spinBox_mean_win.setValue(int(auto_mean_win))
         mean_win = self.ui.spinBox_mean_win.value()
 
@@ -571,15 +480,8 @@ class Controller:
             return
         """ Функция пересчета исходного сигнала, расчет цементограмм для старого оборудования"""
 
-        coeff_norm = self.ui.doubleSpinBox_coeff_norm_old.value()  # считываем значения коэффициентов из спинбоксов
-        coeff_func = self.ui.doubleSpinBox_coeff_func_old.value()
-        coeff_dif_res = self.ui.spinBox_coeff_dif_res_old.value()
 
-        self.state.old.interval_min = self.state.old.signals.index[self.state.old.signals['depth'] ==  # определяем интервалы индексов min - max
-                                self.get_nearest_value(self.state.old.signals['depth'], self.ui.doubleSpinBox_int_min.value())].tolist()[0]
-        self.state.old.interval_max = self.state.old.signals.index[self.state.old.signals['depth'] ==
-                                self.get_nearest_value(self.state.old.signals['depth'], self.ui.doubleSpinBox_int_max.value())].tolist()[0]
-        auto_mean_win = (self.state.old.interval_max - self.state.old.interval_min) / (1 + 3.322 * np.log(self.state.old.interval_max - self.state.old.interval_min)) / 2.302585
+        auto_mean_win = preprocessing.prepare_interval(self.state.old, self.ui.doubleSpinBox_int_min.value(), self.ui.doubleSpinBox_int_max.value())
         self.ui.spinBox_mean_win_old.setValue(int(auto_mean_win))
         mean_win = self.ui.spinBox_mean_win_old.value()
         self.ui.progressBar.setMaximum(12)
@@ -625,26 +527,12 @@ class Controller:
             int_min_self = self.state.new.interval_min
             int_max_self = self.state.new.interval_max
             c_sig = self.create_list_sig('new')
-        list_def1, list_def2 = [], []
+        classification_errors = []
         if uniq_qual:
-            for n_sig in c_sig:
-                min_value = device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self].min()
-                max_value = device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self].max()
-                def1 = min_value + (max_value - min_value) / 3
-                def2 = min_value + (2 * (max_value - min_value) / 3)
-                device[str(n_sig) + '_quality'] = [0]*int_min_self + \
-                    self.calc_defect(device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self], def1, def2) + \
-                                                  [0]*(len(device['depth']) - int_max_self)
-                if device is self.state.new.signals:
-                    if n_sig not in [9, 10, 11]:
-                        list_def1.append(def1)
-                        list_def2.append(def2)
-                else:
-                    if n_sig not in [13, 14, 15]:
-                        list_def1.append(def1)
-                        list_def2.append(def2)
-            mean_def1 = np.mean(list_def1)
-            mean_def2 = np.mean(list_def2)
+            mean_def1, mean_def2 = interpretation.individual_thresholds(
+                device, c_sig, int_min_self, int_max_self,
+                'new' if device is self.state.new.signals else 'old', self.ui.checkBox_abs_def.isChecked(), classification_errors)
+            self.show_classification_errors(classification_errors)
             if device is self.state.new.signals:
                 self.ui.doubleSpinBox_defect1_new.setValue(mean_def1)
                 self.ui.doubleSpinBox_defect2_new.setValue(mean_def2)
@@ -658,10 +546,9 @@ class Controller:
             else:
                 mean_def1 = self.ui.doubleSpinBox_defect1_old.value()
                 mean_def2 = self.ui.doubleSpinBox_defect2_old.value()
-        for n_sig in c_sig:
-            device[str(n_sig) + '_qual_mean'] = [0]*int_min_self + \
-                self.calc_defect(device[str(n_sig) + '_diff_result'].iloc[int_min_self:int_max_self], mean_def1, mean_def2) + \
-                                              [0]*(len(device['depth']) - int_max_self)
+        interpretation.common_thresholds(device, c_sig, int_min_self, int_max_self,
+                                         mean_def1, mean_def2, self.ui.checkBox_abs_def.isChecked(), classification_errors)
+        self.show_classification_errors(classification_errors)
         self.match_defect(device)
         self.choice_signal()
 
@@ -675,6 +562,12 @@ class Controller:
         """ Пересчет интервалов дефектов при изменении общих уровней дефектов для старого оборудования   """
         self.calc_defect_to_tab(self.state.old.signals, False)
 
+
+    def show_classification_errors(self, errors):
+        if errors:
+            self.ui.label_info.setText('Ошибка расчета интервалов дефектов. Поробуйте уменьшить максимальную глубину. '
+                                       'Например на 1 метр.')
+            self.ui.label_info.setStyleSheet('color:red')
 
     def calc_defect(self, input_list_1, defect1, defect2, intervals=None):
         try:
@@ -696,18 +589,7 @@ class Controller:
         else:
             list_sig = self.create_list_sig('old')
         self.remove_sum(device, list_sig)
-        for row in range(len(device['depth'])):
-            sel_mean = 0
-            sel_uniq = 0
-            for n_izm in list_sig:
-                if device[str(n_izm) + '_quality'][row] > 0:
-                    sel_uniq += 1
-                if device[str(n_izm) + '_qual_mean'][row] > 0:
-                    sel_mean += 1
-            list_match_uniq.append((sel_uniq/len(list_sig))*10-5)
-            list_match_mean.append((sel_mean / len(list_sig))*10-5)
-        device['match_def_uniq'] = list_match_uniq
-        device['match_def_mean'] = list_match_mean
+        interpretation.match_defect(device, list_sig)
 
 
     def choice_signal(self):
@@ -909,89 +791,31 @@ class Controller:
 
     def change_mean_win(self):
         """ пересчёт кривых при изменении коэффициентов """
-        mean_win = self.ui.spinBox_mean_win.value()
-        coeff_norm = self.ui.doubleSpinBox_coeff_norm.value()
-        coeff_dif_res = self.ui.spinBox_coeff_dif_res.value()
-        for i in range(1, 12):
-            if (str(i) + '_envelope') in self.state.new.signals:
-                if self.state.new.signals[str(i) + '_envelope'][1] != 0:
-                    self.state.new.signals[str(i) + '_mean'] = self.state.new.signals[str(i) + '_envelope'].rolling(mean_win, min_periods=1,
-                                                                                              center=True).mean()
-                    self.state.new.signals[str(i) + '_norm'] = self.state.new.signals[str(i) + '_envelope'] / (self.state.new.signals[str(i) + '_mean'] + coeff_norm)
-                    self.state.new.signals[str(i) + '_norm'] = self.state.new.signals[str(i) + '_norm'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
-                    self.state.new.signals[str(i) + '_mean-1'] = self.state.new.signals[str(i) + '_mean'].shift(-1)
-                    self.state.new.signals[str(i) + '_diff_norm'] = (self.state.new.signals[str(i) + '_mean-1'] - self.state.new.signals[str(i) + '_mean']) / \
-                                                         self.state.new.signals[str(i) + '_mean']
-                    self.state.new.signals[str(i) + '_diff_norm-1'] = self.state.new.signals[str(i) + '_diff_norm'].shift(-1)
-                    self.state.new.signals[str(i) + '_diff_result'] = (self.state.new.signals[str(i) + '_diff_norm-1'] + self.state.new.signals[
-                        str(i) + '_diff_norm']) * coeff_dif_res
-                    self.state.new.signals.at[self.state.new.interval_max, str(i) + '_diff_result'] = self.state.new.signals.at[self.state.new.interval_max - 2, str(i) + '_diff_result']
-                    self.state.new.signals.at[self.state.new.interval_max - 1, str(i) + '_diff_result'] = self.state.new.signals.at[
-                        self.state.new.interval_max - 2, str(i) + '_diff_result']
+        preprocessing.change_mean_win(self.state.new, self.read_parameters('new', self.ui.spinBox_mean_win.value()))
         self.state.new.signals.to_csv('result.txt', sep='\t')
         self.choice_signal()
 
 
     def change_mean_win_old(self):
         """ пересчёт кривых при изменении коэффициентов """
-        coeff_norm = self.ui.doubleSpinBox_coeff_norm_old.value()  # считываем значения коэффициентов из спинбоксов
-        coeff_dif_res = self.ui.spinBox_coeff_dif_res_old.value()
-        mean_win = self.ui.spinBox_mean_win_old.value()
-
-        for i in range(1, 16):
-            if i in self.state.old.signals.columns:
-                if self.state.old.signals[i][1] != 0:
-                    self.state.old.signals[str(i) + '_mean'] = self.state.old.signals[i].rolling(mean_win, min_periods=1, center=True).mean()
-                    self.state.old.signals[str(i) + '_norm'] = self.state.old.signals[i] / (self.state.old.signals[str(i) + '_mean'] + coeff_norm)
-                    self.state.old.signals[str(i) + '_norm'] = self.state.old.signals[str(i) + '_norm'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
-                    self.state.old.signals[str(i) + '_mean-1'] = self.state.old.signals[str(i) + '_mean'].shift(-1)  # сдвиг усредненного сигнала
-                    self.state.old.signals[str(i) + '_diff_norm'] = (self.state.old.signals[str(i) + '_mean-1'] -  # нормированная производная
-                                                              self.state.old.signals[str(i) + '_mean']) / self.state.old.signals[str(i) + '_mean']
-                    self.state.old.signals[str(i) + '_diff_norm-1'] = self.state.old.signals[str(i) + '_diff_norm'].shift(-1)  # сдвиг
-                    self.state.old.signals[str(i) + '_diff_result'] = (self.state.old.signals[str(i) + '_diff_norm-1'] + self.state.old.signals[
-                        str(i) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
-                    self.state.old.signals.at[self.state.old.interval_max, str(i) + '_diff_result'] = self.state.old.signals.at[
-                        self.state.old.interval_max - 2, str(i) + '_diff_result']
-                    self.state.old.signals.at[self.state.old.interval_max - 1, str(i) + '_diff_result'] = self.state.old.signals.at[
-                        self.state.old.interval_max - 2, str(i) + '_diff_result']
-
+        preprocessing.change_mean_win_old(self.state.old, self.read_parameters('old', self.ui.spinBox_mean_win_old.value()))
         self.state.old.signals.to_csv('result_old.txt', sep='\t')
         self.choice_signal()
 
 
     def func1(self, x, a, b):
-        """ функция затухания """
-        return a * b ** x
-        # return a*(x-b)**c
+        return func1(x, a, b)
 
 
     def change_func(self):
         """ пересчет для сдвига функции затухания """
-        coeff_func = self.ui.doubleSpinBox_coeff_func.value()
-        kA = self.ui.doubleSpinBox_kA.value()
-        kB = self.ui.doubleSpinBox_kB.value()
-        for i in range(1, 12):
-            if (str(i) + '_envelope') in self.state.new.signals:
-                if self.state.new.signals[str(i) + '_envelope'][1] != 0:
-                    self.state.new.signals[str(i) + '_func'] = self.func1(self.state.new.signals['depth'], self.state.new.statistics['coeff_A'][i]+kA, self.state.new.statistics['coeff_B'][i]+kB) + coeff_func
-                    self.state.new.signals[str(i) + '_rel_ampl'] = (self.state.new.signals[str(i) + '_envelope-1'] - self.state.new.signals[str(i) + '_func']) / \
-                                                        self.state.new.signals[str(i) + '_envelope-1']
-                    self.state.new.signals[str(i) + '_rel_ampl'] = self.state.new.signals[str(i) + '_rel_ampl'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
+        preprocessing.change_func(self.state.new, self.read_parameters('new', self.ui.spinBox_mean_win.value()), self.ui.doubleSpinBox_kA.value(), self.ui.doubleSpinBox_kB.value())
         self.choice_signal()
 
 
     def change_func_old(self):
         """ пересчет для сдвига функции затухания """
-        coeff_func = self.ui.doubleSpinBox_coeff_func_old.value()
-        kA = self.ui.doubleSpinBox_kA_old.value()
-        kB = self.ui.doubleSpinBox_kB_old.value()
-        for i in range(1, 16):
-            if i in self.state.old.signals.columns:
-                if self.state.old.signals[i][1] != 0:
-                    self.state.old.signals[str(i) + '_func'] = self.func1(self.state.old.signals['depth'], self.state.old.statistics['coeff_A'][i]+kA, self.state.old.statistics['coeff_B'][i]+kB) + coeff_func
-                    self.state.old.signals[str(i) + '_rel_ampl'] = (self.state.old.signals[str(i) + '-1'] - self.state.old.signals[str(i) + '_func']) / \
-                                                            self.state.old.signals[str(i) + '-1']  # расчет цементограммы по функции
-                    self.state.old.signals[str(i) + '_rel_ampl'] = self.state.old.signals[str(i) + '_rel_ampl'].diff().rolling(50, min_periods=1, center=True).mean()  # todo эксперимент
+        preprocessing.change_func_old(self.state.old, self.read_parameters('old', self.ui.spinBox_mean_win_old.value()), self.ui.doubleSpinBox_kA_old.value(), self.ui.doubleSpinBox_kB_old.value())
         self.choice_signal()
 
 
@@ -1002,84 +826,21 @@ class Controller:
 
 
     def get_nearest_value(self, iterable, value):
-        """ функция поиска ближайщего значения """
-        return min(iterable, key=lambda x: abs(x - value))
+        return get_nearest_value(iterable, value)
 
 
     def sum_signals(self, n_sum):
         self.invalidate('new')
-        """ Расчет суммы сигналов """
-        n_signals = 0
-        max_h = 0
-        result_sum = False
-        self.state.new.signals[str(n_sum) + '_envelope'] = 0
-        checkboxes = self.ui.new_device.findChildren(QCheckBox)
-        for item in checkboxes:
-            if item.isEnabled() and int(item.text()[0:2]) not in [9, 10, 11]:
-                if item.checkState() == 2:
-                    n_izm = int(item.text()[0:2])
-                    if max_h == 0:
-                        max_h = self.state.new.statistics['max_h'][n_izm]
-                        self.state.new.signals[str(n_sum) + '_envelope'] = self.state.new.signals[str(n_sum) + '_envelope'] + self.state.new.signals[
-                            str(n_izm) + '_envelope']
-                        n_signals += 1
-                    else:
-                        if max_h != self.state.new.statistics['max_h'][n_izm]:
-                            n_signals = 0
-                            self.ui.label_info.setText('Ошибка сложения! Нельзя сложить сигналы разной длины.')
-                            self.ui.label_info.setStyleSheet('color:red')
-                            break
-                        else:
-                            self.state.new.signals[str(n_sum) + '_envelope'] = self.state.new.signals[str(n_sum) + '_envelope'] + self.state.new.signals[
-                                str(n_izm) + '_envelope']
-                            n_signals += 1
-
-        if n_signals != 0:
-            self.state.new.signals[str(n_sum) + '_envelope'] = self.state.new.signals[str(n_sum) + '_envelope']/n_signals
-            coeff_norm = self.ui.doubleSpinBox_coeff_norm.value()  # считываем значения коэффициентов из спинбоксов
-            coeff_func = self.ui.doubleSpinBox_coeff_func.value()
-            coeff_dif_res = self.ui.spinBox_coeff_dif_res.value()
-            mean_win = self.ui.spinBox_mean_win.value()
-            self.state.new.statistics['max_h'][n_sum] = max_h
-            int_max = self.calc_max_int(self.state.new.signals, self.state.new.statistics, n_sum)
-            max_min = self.state.new.signals[str(n_sum) + '_envelope'].iloc[self.state.new.interval_min:int_max].max() / \
-                      self.state.new.signals[str(n_sum) + '_envelope'].iloc[self.state.new.interval_min:int_max].min()
-            self.state.new.statistics['max_min'][n_sum] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
-            self.state.new.signals[str(n_sum) + '_envelope-1'] = self.state.new.signals[str(n_sum) + '_envelope'].shift(-1)  # сдвиг огибающ сигнала на 1
-            self.state.new.signals[str(n_sum) + '_mean'] = self.state.new.signals[str(n_sum) + '_envelope'].rolling(mean_win, min_periods=1,
-                                                                                      center=True).mean()  # усреднение
-            self.state.new.signals[str(n_sum) + '_norm'] = self.state.new.signals[str(n_sum) + '_envelope'] / (self.state.new.signals[str(n_sum) + '_mean'] + coeff_norm)
-            # расчет цементограммы по усредняющей с коэффициентом
-            popt, pcov = curve_fit(self.func1, self.state.new.signals['depth'].iloc[self.state.new.interval_min:int_max],  # расчет коэф для функции
-                                   self.state.new.signals[str(n_sum) + '_envelope'].iloc[self.state.new.interval_min:int_max])
-            self.state.new.statistics['coeff_A'][n_sum] = popt[0]
-            self.state.new.statistics['coeff_B'][n_sum] = popt[1]
-            self.state.new.signals[str(n_sum) + '_func'] = self.func1(self.state.new.signals['depth'], popt[0], popt[1]) + coeff_func  # построение
-            # фунции в интервале сигнала со сдвигом по Y на coeff_func
-
-            """Расчет коэффициента затухания"""
-            self.state.new.signals[str(n_sum) + '_func_kdamp'] = self.state.new.signals[str(n_sum) + '_func'][0]/self.state.new.signals[str(n_sum) + '_func']
-            i_kdamp = self.state.new.signals.index[self.state.new.signals[str(n_sum) + '_func_kdamp'] == self.get_nearest_value(self.state.new.signals[str(n_sum)
-                                                                                 +'_func_kdamp'], np.exp(1))].tolist()[0]
-            # all_stat['k_damp'][n_sum] = 0.2029*np.log(np.exp(1)/all_signals['depth'][i_kdamp])+0.9127
-            self.state.new.statistics['k_damp'][n_sum] = np.exp(1) / self.state.new.signals['depth'][i_kdamp]
-
-            self.state.new.signals[str(n_sum) + '_rel_ampl'] = (self.state.new.signals[str(n_sum) + '_envelope-1'] - self.state.new.signals[str(n_sum) + '_func']) / \
-                                                self.state.new.signals[str(n_sum) + '_envelope-1']  # расчет цементограммы по функции
-            self.state.new.signals[str(n_sum) + '_mean-1'] = self.state.new.signals[str(n_sum) + '_mean'].shift(-1)  # сдвиг усредненного сигнала на 1
-            self.state.new.signals[str(n_sum) + '_diff_norm'] = (self.state.new.signals[str(n_sum) + '_mean-1'] - self.state.new.signals[str(n_sum) + '_mean']) / \
-                                                 self.state.new.signals[str(n_sum) + '_mean']  # нормированная производная
-            self.state.new.signals[str(n_sum) + '_diff_norm-1'] = self.state.new.signals[str(n_sum) + '_diff_norm'].shift(-1)  # сдвиг
-            self.state.new.signals[str(n_sum) + '_diff_result'] = (self.state.new.signals[str(n_sum) + '_diff_norm-1'] + self.state.new.signals[
-                str(n_sum) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
-            self.state.new.signals.at[int_max, str(n_sum) + '_diff_result'] = self.state.new.signals.at[int_max - 2, str(n_sum) + '_diff_result']
-            self.state.new.signals.at[int_max - 1, str(n_sum) + '_diff_result'] = self.state.new.signals.at[int_max - 2, str(n_sum) + '_diff_result']
-            std_25 = self.state.new.signals[str(n_sum) + '_envelope'].iloc[-430:].std()  # стандартное отклонение по последним 25 метрам
-            for n, k in enumerate(self.state.new.signals[str(n_sum) + '_mean'].iloc[self.state.new.interval_min:int_max]):
-                if k <= std_25 + self.state.new.signals[str(n_sum) + '_mean'].iloc[self.state.new.interval_min:int_max].min():
-                    useful_depth = self.state.new.signals['depth'][n]
-                    self.state.new.statistics['useful_depth'][n_sum] = useful_depth
-                    break
+        channels = [int(item.text()[0:2]) for item in self.ui.new_device.findChildren(QCheckBox)
+                    if item.isEnabled() and int(item.text()[0:2]) < 9 and item.checkState() == 2]
+        parameters = self.read_parameters('new', self.ui.spinBox_mean_win.value())
+        try:
+            result_sum = sums.sum_signals(self.state.new, parameters, channels, n_sum)
+        except sums.SignalLengthError as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
+            return False
+        if result_sum:
             self.calc_defect_to_tab(self.state.new.signals, True)
             self.state.new.signals.to_csv('all_signals.txt', sep='\t')
             self.state.new.statistics.to_csv('all_stat.txt', sep='\t')
@@ -1092,79 +853,16 @@ class Controller:
 
     def sum_signals_old(self, n_sum):
         self.invalidate('old')
-        """ Расчет суммы сигналов """
-        n_signals = 0
-        max_h = 0
-        result_sum = False
-        self.state.old.signals[n_sum] = 0
-        checkboxes = self.ui.old_device.findChildren(QCheckBox)
-        for item in checkboxes:
-            if item.isEnabled() and int(item.text()[0:2]) not in [13, 14, 15]:
-                if item.checkState() == 2:
-                    n_izm = int(item.text()[0:2])
-                    if max_h == 0:
-                        max_h = self.state.old.statistics['max_h'][n_izm]
-                        self.state.old.signals[n_sum] = self.state.old.signals[n_sum] + self.state.old.signals[n_izm]
-                        n_signals += 1
-                    else:
-                        if max_h != self.state.old.statistics['max_h'][n_izm]:
-                            n_signals = 0
-                            self.ui.label_info.setText('Ошибка сложения! Нельзя сложить сигналы разной длины.')
-                            self.ui.label_info.setStyleSheet('color:red')
-                            break
-                        else:
-                            self.state.old.signals[n_sum] = self.state.old.signals[n_sum] + self.state.old.signals[n_izm]
-                            n_signals += 1
-        if n_signals != 0:
-            self.state.old.signals[n_sum] = self.state.old.signals[n_sum]/n_signals
-            coeff_norm = self.ui.doubleSpinBox_coeff_norm_old.value()  # считываем значения коэффициентов из спинбоксов
-            coeff_func = self.ui.doubleSpinBox_coeff_func_old.value()
-            coeff_dif_res = self.ui.spinBox_coeff_dif_res_old.value()
-            mean_win = self.ui.spinBox_mean_win_old.value()
-            self.state.old.statistics['max_h'][n_sum] = max_h
-            int_max_old = self.calc_max_int(self.state.old.signals, self.state.old.statistics, n_sum)
-            max_min = self.state.old.signals[n_sum].iloc[self.state.old.interval_min:int_max_old].max() / \
-                      self.state.old.signals[n_sum].iloc[self.state.old.interval_min:int_max_old].min()
-            self.state.old.statistics['max_min'][n_sum] = max_min  # расчет отношения макс к мин и заносим значение в таблицу статистики
-            self.state.old.signals[str(n_sum) + '-1'] = self.state.old.signals[n_sum].shift(-1)  # сдвиг огибающ сигнала на 1
-            self.state.old.signals[str(n_sum) + '_mean'] = self.state.old.signals[n_sum].rolling(mean_win, min_periods=1, center=True).mean()
-            self.state.old.signals[str(n_sum) + '_norm'] = self.state.old.signals[n_sum] / (self.state.old.signals[str(n_sum) + '_mean'] + coeff_norm)
-            # расчет цементограммы по усредняющей с коэффициентом
-            popt, pcov = curve_fit(self.func1, self.state.old.signals['depth'].iloc[self.state.old.interval_min:int_max_old],  # расчет коэф для функции
-                                   self.state.old.signals[n_sum].iloc[self.state.old.interval_min:int_max_old])
-            self.state.old.statistics['coeff_A'][n_sum] = popt[0]
-            self.state.old.statistics['coeff_B'][n_sum] = popt[1]
-            self.state.old.signals[str(n_sum) + '_func'] = self.func1(self.state.old.signals['depth'], popt[0], popt[1]) + coeff_func  # построение
-            # фунции в интервале сигнала со сдвигом по Y на coeff_func
-
-            """Расчет коэффициента затухания"""
-            self.state.old.signals[str(n_sum) + '_func_kdamp'] = self.state.old.signals[str(n_sum) + '_func'][0] / self.state.old.signals[
-                str(n_sum) + '_func']
-            i_kdamp = self.state.old.signals.index[
-                self.state.old.signals[str(n_sum) + '_func_kdamp'] == self.get_nearest_value(self.state.old.signals[str(n_sum) + '_func_kdamp'],
-                                                                             np.exp(1))].tolist()[0]
-            # all_stat_old['k_damp'][n_sum] = 0.2029 * np.log(np.exp(1) / all_signals_old['depth'][i_kdamp]) + 0.9127
-            self.state.old.statistics['k_damp'][n_sum] = np.exp(1) / self.state.old.signals['depth'][i_kdamp]
-
-            self.state.old.signals[str(n_sum) + '_rel_ampl'] = (self.state.old.signals[str(n_sum) + '-1'] - self.state.old.signals[str(n_sum) + '_func']) / \
-                                                    self.state.old.signals[str(n_sum) + '-1']  # расчет цементограммы по функции
-            self.state.old.signals[str(n_sum) + '_mean-1'] = self.state.old.signals[str(n_sum) + '_mean'].shift(-1)  # сдвиг усредненного сигнала
-            self.state.old.signals[str(n_sum) + '_diff_norm'] = (self.state.old.signals[str(n_sum) + '_mean-1'] -  # нормированная производная
-                                                      self.state.old.signals[str(n_sum) + '_mean']) / self.state.old.signals[str(n_sum) + '_mean']
-            self.state.old.signals[str(n_sum) + '_diff_norm-1'] = self.state.old.signals[str(n_sum) + '_diff_norm'].shift(-1)  # сдвиг
-            self.state.old.signals[str(n_sum) + '_diff_result'] = (self.state.old.signals[str(n_sum) + '_diff_norm-1'] + self.state.old.signals[
-                str(n_sum) + '_diff_norm']) * coeff_dif_res  # расчет цементограммы по производной (как в щелкуне)
-            self.state.old.signals.at[int_max_old, str(n_sum) + '_diff_result'] = self.state.old.signals.at[
-                int_max_old - 2, str(n_sum) + '_diff_result']
-            self.state.old.signals.at[int_max_old - 1, str(n_sum) + '_diff_result'] = self.state.old.signals.at[
-                int_max_old - 2, str(n_sum) + '_diff_result']
-
-            std_25 = self.state.old.signals[n_sum].iloc[-50:].std()  # стандартное отклонение по последним 25 метрам
-            for n, k in enumerate(self.state.old.signals[str(n_sum) + '_mean'].iloc[self.state.old.interval_min:int_max_old]):
-                if k <= std_25 + self.state.old.signals[str(n_sum) + '_mean'].iloc[self.state.old.interval_min:int_max_old].min():
-                    useful_depth = self.state.old.signals['depth'][n]
-                    self.state.old.statistics['useful_depth'][n_sum] = useful_depth
-                    break
+        channels = [int(item.text()[0:2]) for item in self.ui.old_device.findChildren(QCheckBox)
+                    if item.isEnabled() and int(item.text()[0:2]) < 13 and item.checkState() == 2]
+        parameters = self.read_parameters('old', self.ui.spinBox_mean_win_old.value())
+        try:
+            result_sum = sums.sum_signals_old(self.state.old, parameters, channels, n_sum)
+        except sums.SignalLengthError as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
+            return False
+        if result_sum:
             self.calc_defect_to_tab(self.state.old.signals, True)
             self.state.old.signals.to_csv('result_old.txt', sep='\t')
             self.state.old.statistics.to_csv('all_stat_old.txt', sep='\t')
@@ -1294,48 +992,11 @@ class Controller:
                 text = text + str(n_i) + ' '
                 list_sig.append(n_i)
         if len(list_sig) > 1:
-            for row in range(len(self.state.new.signals['depth'])):
-                sel = []
-                for n_izm in list_sig:
-                    sel.append(self.state.new.signals[n_izm][row])
-                signal_interval = np.linspace(np.min(sel), np.max(sel), 1000)
-                try:
-                    pdf = st.gaussian_kde(sel)
-                except np.linalg.LinAlgError:
-                    pdf_signal.append(sel[0])
-                    self.ui.progressBar.setValue(row)
-                    continue
-                pdf_func = pdf.evaluate(signal_interval)
-                pdf_func_max_index = pdf_func.argmax()
-                pdf_func_max = signal_interval[pdf_func_max_index]
-                pdf_signal.append(pdf_func_max)
-                self.ui.progressBar.setValue(row)
-            self.state.new.signals['pdf'] = pdf_signal
-            n_max = ((np.diff(np.sign(np.diff(self.state.new.signals['pdf']))) < 0).nonzero()[0] + 1).tolist()
-            n_max.insert(0, 0)
-            n_max.append(int(len(self.state.new.signals['pdf'])) - 1)
-            max_x = self.state.new.signals.loc[n_max, 'depth']  # выбираем x и y максимумов
-            max_y = self.state.new.signals.loc[n_max, 'pdf']
-            envelope = interp1d(max_x, max_y, kind='linear')  # выполняем интерполяцию по максимуму, получая огибающую
-            self.state.new.signals['pdf_envelope'] = envelope(self.state.new.signals['depth'])
-            self.state.new.signals['pdf_envelope'] = self.state.new.signals['pdf_envelope'].rolling(80, min_periods=1, center=True).mean()
+            pdf.envelope_new(self.state.new, list_sig, self.ui.progressBar.setValue)
             self.ui.checkBox_pdf.setText(text)
             self.ui.checkBox_pdf.setCheckState(2)
 
-            mean_win = self.ui.spinBox_mean_win.value()
-            self.state.new.signals['pdf_envelope-1'] = self.state.new.signals['pdf_envelope'].shift(-1)
-            self.state.new.signals['pdf_mean'] = self.state.new.signals['pdf_envelope'].rolling(mean_win, min_periods=1, center=True).mean()
-            popt, pcov = curve_fit(self.func1, self.state.new.signals['depth'].iloc[self.state.new.interval_min:self.state.new.interval_max], self.state.new.signals['pdf_envelope'].iloc[self.state.new.interval_min:self.state.new.interval_max])
-            self.state.new.signals['pdf_func'] = self.func1(self.state.new.signals['depth'], popt[0], popt[1]) + 0.1
-            self.state.new.signals['pdf_rel_ampl'] = (self.state.new.signals['pdf_envelope-1'] - self.state.new.signals['pdf_func']) / self.state.new.signals['pdf_envelope-1']
-            self.state.new.signals['pdf_mean-1'] = self.state.new.signals['pdf_mean'].shift(-1)
-            self.state.new.signals['pdf_diff_norm'] = (self.state.new.signals['pdf_mean-1'] - self.state.new.signals['pdf_mean']) / self.state.new.signals['pdf_mean']
-            self.state.new.signals['pdf_diff_norm-1'] = self.state.new.signals['pdf_diff_norm'].shift(-1)
-            coeff_dif_res = self.ui.spinBox_coeff_dif_res.value()
-            self.state.new.signals['pdf_diff_result'] = (self.state.new.signals['pdf_diff_norm-1'] + self.state.new.signals['pdf_diff_norm']) * coeff_dif_res
-            self.state.new.signals.at[self.state.new.interval_max, 'pdf_diff_result'] = self.state.new.signals.at[self.state.new.interval_max - 2, 'pdf_diff_result']
-            self.state.new.signals.at[self.state.new.interval_max - 1, 'pdf_diff_result'] = self.state.new.signals.at[self.state.new.interval_max - 2, 'pdf_diff_result']
-
+            pdf.curves_new(self.state.new, self.read_parameters('new', self.ui.spinBox_mean_win.value()))
             self.ui.label_info.setText('Готово!')
             self.ui.label_info.setStyleSheet('color:green')
             self.choice_signal()
@@ -1366,43 +1027,11 @@ class Controller:
                 text = text + str(n_i) + ' '
                 list_sig.append(n_i)
         if len(list_sig) > 1:
-            for row in range(len(self.state.old.signals['depth'])):
-                sel = []
-                for n_izm in list_sig:
-                    sel.append(self.state.old.signals[n_izm][row])
-                signal_interval = np.linspace(np.min(sel), np.max(sel), 1000)
-                try:
-                    pdf = st.gaussian_kde(sel)
-                except np.linalg.LinAlgError:
-                    pdf_signal.append(sel[0])
-                    self.ui.progressBar.setValue(row)
-                    continue
-                pdf_func = pdf.evaluate(signal_interval)
-                pdf_func_max_index = pdf_func.argmax()
-                pdf_func_max = signal_interval[pdf_func_max_index]
-                pdf_signal.append(pdf_func_max)
-                self.ui.progressBar.setValue(row)
-            self.state.old.signals['pdf_envelope'] = pdf_signal
-            self.state.old.signals['pdf_envelope'] = self.state.old.signals['pdf_envelope'].rolling(10, min_periods=1, center=True).mean()
+            pdf.envelope_old(self.state.old, list_sig, self.ui.progressBar.setValue)
             self.ui.checkBox_pdf_old.setText(text)
             self.ui.checkBox_pdf_old.setCheckState(2)
 
-            mean_win = self.ui.spinBox_mean_win_old.value()
-            self.state.old.signals['pdf_envelope-1'] = self.state.old.signals['pdf_envelope'].shift(-1)
-            self.state.old.signals['pdf_mean'] = self.state.old.signals['pdf_envelope'].rolling(mean_win, min_periods=1, center=True).mean()
-            popt, pcov = curve_fit(self.func1, self.state.old.signals['depth'].iloc[self.state.old.interval_min:self.state.old.interval_max],
-                                   self.state.old.signals['pdf_envelope'].iloc[self.state.old.interval_min:self.state.old.interval_max])
-            self.state.old.signals['pdf_func'] = self.func1(self.state.old.signals['depth'], popt[0], popt[1]) + 0.1
-            self.state.old.signals['pdf_rel_ampl'] = (self.state.old.signals['pdf_envelope-1'] - self.state.old.signals['pdf_func']) / self.state.old.signals[
-                'pdf_envelope-1']
-            self.state.old.signals['pdf_mean-1'] = self.state.old.signals['pdf_mean'].shift(-1)
-            self.state.old.signals['pdf_diff_norm'] = (self.state.old.signals['pdf_mean-1'] - self.state.old.signals['pdf_mean']) / self.state.old.signals['pdf_mean']
-            self.state.old.signals['pdf_diff_norm-1'] = self.state.old.signals['pdf_diff_norm'].shift(-1)
-            coeff_dif_res = self.ui.spinBox_coeff_dif_res_old.value()
-            self.state.old.signals['pdf_diff_result'] = (self.state.old.signals['pdf_diff_norm-1'] + self.state.old.signals['pdf_diff_norm']) * coeff_dif_res
-            self.state.old.signals.at[self.state.old.interval_max, 'pdf_diff_result'] = self.state.old.signals.at[self.state.old.interval_max - 2, 'pdf_diff_result']
-            self.state.old.signals.at[self.state.old.interval_max - 1, 'pdf_diff_result'] = self.state.old.signals.at[self.state.old.interval_max - 2, 'pdf_diff_result']
-
+            pdf.curves_old(self.state.old, self.read_parameters('old', self.ui.spinBox_mean_win_old.value()))
             self.ui.label_info.setText('Расчитана функция плотности вероятности')
             self.ui.label_info.setStyleSheet('color:green')
         else:
@@ -1436,21 +1065,8 @@ class Controller:
 
 
     def k_damp_detect(self, device, n_izm):
-        """ Цвет названия сигнала, в зависимости от коэффициента затухания """
-        if device == 'new':
-            if self.state.new.statistics['k_damp'][n_izm] < 0.3233:
-                return 'background: red'
-            elif 0.3233 <= self.state.new.statistics['k_damp'][n_izm] < 0.6806:
-                return 'background: yellow'
-            elif self.state.new.statistics['k_damp'][n_izm] >= 0.6806:
-                return 'background: green'
-        elif device == 'old':
-            if self.state.old.statistics['k_damp'][n_izm] < 0.3233:
-                return 'background: red'
-            elif 0.3233 <= self.state.old.statistics['k_damp'][n_izm] < 0.6806:
-                return 'background: yellow'
-            elif self.state.old.statistics['k_damp'][n_izm] >= 0.6806:
-                return 'background: green'
+        color = interpretation.damping_class(getattr(self.state, device).statistics['k_damp'][n_izm])
+        return 'background: ' + color if color is not None else None
         # if device == 'new':
         #     if all_stat['k_damp'][n_izm] < 0.65:
         #         return 'background: red'
@@ -1475,60 +1091,21 @@ class Controller:
         self.ui.doubleSpinBox_min_cement.setEnabled(False)
         self.ui.doubleSpinBox_max_cement.setEnabled(False)
         self.ui.name_cement.setText('измерение цементограммы')
-        checkboxes = self.ui.new_device.findChildren(QCheckBox)
-        for item in checkboxes:
-            if item.checkState() == 2:
-                self.bind_interpretation('new', item.text())
-                n_izm = int(item.text()[0:2])
-                int_max = self.calc_max_int(self.state.new.signals, self.state.new.statistics, n_izm)
-                if self.state.new.interval_min < 86:
-                    self.state.interpretation.table = pd.DataFrame(self.state.new.signals['depth'].iloc[86:int_max])
-                else:
-                    self.state.interpretation.table = pd.DataFrame(self.state.new.signals['depth'].iloc[self.state.new.interval_min:int_max])
-                self.ui.name_cement.setText(item.text())
-                self.state.interpretation.damping = self.state.new.statistics['k_damp'][n_izm]
-                if n_izm in [1, 2, 5, 6]:
-                    self.state.interpretation.frequency = '5'
-                elif n_izm in [3, 4, 7, 8]:
-                    self.state.interpretation.frequency = '2'
-                elif n_izm in [9, 10, 11]:
-                    self.state.interpretation.frequency = ''
-                if self.state.new.interval_min < 86:
-                    self.state.interpretation.table['first_sig'] = self.state.new.signals[str(n_izm) + '_diff_result'].iloc[86:int_max]
-                    self.state.interpretation.table['func'] = self.state.new.signals[str(n_izm) + '_func'].iloc[86:int_max]
-                else:
-                    self.state.interpretation.table['first_sig'] = self.state.new.signals[str(n_izm) + '_diff_result'].iloc[self.state.new.interval_min:int_max]
-                    self.state.interpretation.table['func'] = self.state.new.signals[str(n_izm) + '_func'].iloc[self.state.new.interval_min:int_max]
-
-        if self.ui.name_cement.text() == 'измерение цементограммы':
-            checkboxes = self.ui.old_device.findChildren(QCheckBox)
-            for item in checkboxes:
-                if item.checkState() == 2:
-                    if self.state.old.interval_min < 86:
-                        self.state.interpretation.table = pd.DataFrame(self.state.old.signals['depth'].iloc[86:self.state.old.interval_max])
-                    else:
-                        self.state.interpretation.table = pd.DataFrame(self.state.old.signals['depth'].iloc[self.state.old.interval_min:self.state.old.interval_max])
-                    self.ui.name_cement.setText(item.text())
-                    self.bind_interpretation('old', item.text())
-                    n_izm = int(item.text()[0:2])
-                    self.state.interpretation.damping = self.state.old.statistics['k_damp'][n_izm]
-                    if n_izm in [1, 2, 5, 6, 9, 10]:
-                        self.state.interpretation.frequency = '5'
-                    elif n_izm in [3, 4, 7, 8, 11, 12]:
-                        self.state.interpretation.frequency = '2'
-                    elif n_izm in [13, 14, 15]:
-                        self.state.interpretation.frequency = ''
-                    if self.state.old.interval_min < 86:
-                        self.state.interpretation.table['first_sig'] = self.state.old.signals[str(n_izm) + '_diff_result'].iloc[86:self.state.old.interval_max]
-                        self.state.interpretation.table['func'] = self.state.old.signals[str(n_izm) + '_func'].iloc[86:self.state.old.interval_max]
-                    else:
-                        self.state.interpretation.table['first_sig'] = self.state.old.signals[str(n_izm) + '_diff_result'].iloc[self.state.old.interval_min:self.state.old.interval_max]
-                        self.state.interpretation.table['func'] = self.state.old.signals[str(n_izm) + '_func'].iloc[self.state.old.interval_min:self.state.old.interval_max]
+        selected_new = [item for item in self.ui.new_device.findChildren(QCheckBox) if item.checkState() == 2]
+        selected_old = [item for item in self.ui.old_device.findChildren(QCheckBox) if item.checkState() == 2]
+        equipment = 'new' if selected_new else 'old'
+        measurements = getattr(self.state, equipment)
+        for item in selected_new or selected_old:
+            number = int(item.text()[0:2])
+            maximum = self.calc_max_int(measurements.signals, measurements.statistics, number) if equipment == 'new' else measurements.interval_max
+            self.state.interpretation.table = interpretation.prepare_cement(measurements, number, maximum)
+            self.ui.name_cement.setText(item.text())
+            self.bind_interpretation(equipment, item.text())
+            self.state.interpretation.damping = measurements.statistics['k_damp'][number]
+            self.state.interpretation.frequency = interpretation.frequency(equipment, number)
         if self.state.interpretation.table is None:
             return
-        self.state.interpretation.table = self.state.interpretation.table.reset_index(drop=True)
-        self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['first_sig'].copy()
-        self.state.interpretation.table['corr_coeff'] = 1
+        self.state.interpretation.automatic_table = self.state.interpretation.table.copy(deep=True)
 
         self.ui.doubleSpinBox_undefine_max.setMaximum(self.state.interpretation.table['depth'].max())
         self.ui.label_int_undefine.setText('Интервалы неопр. цемента:')
@@ -1559,18 +1136,8 @@ class Controller:
             return
         """ Выбор PDF сигнала для цементограммы """
         self.bind_interpretation('new', 'pdf')
-        if self.state.new.interval_min < 86:
-            self.state.interpretation.table = pd.DataFrame(self.state.new.signals['depth'].iloc[86:self.state.new.interval_max])
-            self.state.interpretation.table['first_sig'] = self.state.new.signals['pdf_diff_result'].iloc[86:self.state.new.interval_max]
-            self.state.interpretation.table['func'] = self.state.new.signals['pdf_func'].iloc[86:self.state.new.interval_max]
-        else:
-            self.state.interpretation.table = pd.DataFrame(self.state.new.signals['depth'].iloc[self.state.new.interval_min:self.state.new.interval_max])
-            self.state.interpretation.table['first_sig'] = self.state.new.signals['pdf_diff_result'].iloc[self.state.new.interval_min:self.state.new.interval_max]
-            self.state.interpretation.table['func'] = self.state.new.signals['pdf_func'].iloc[self.state.new.interval_min:self.state.new.interval_max]
-
-        self.state.interpretation.table = self.state.interpretation.table.reset_index(drop=True)
-        self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['first_sig'].copy()
-        self.state.interpretation.table['corr_coeff'] = 1
+        self.state.interpretation.table = interpretation.prepare_cement(self.state.new, 'pdf')
+        self.state.interpretation.automatic_table = self.state.interpretation.table.copy(deep=True)
 
         self.ui.doubleSpinBox_undefine_max.setMaximum(self.state.interpretation.table['depth'].max())
         self.ui.label_int_undefine.setText('Интервалы неопр. цемента:')
@@ -1597,18 +1164,8 @@ class Controller:
             return
         """ Выбор PDF сигнала для цементограммы """
         self.bind_interpretation('old', 'pdf')
-        if self.state.old.interval_min < 86:
-            self.state.interpretation.table = pd.DataFrame(self.state.old.signals['depth'].iloc[86:self.state.old.interval_max])
-            self.state.interpretation.table['first_sig'] = self.state.old.signals['pdf_diff_result'].iloc[86:self.state.old.interval_max]
-            self.state.interpretation.table['func'] = self.state.old.signals['pdf_func'].iloc[86:self.state.old.interval_max]
-        else:
-            self.state.interpretation.table = pd.DataFrame(self.state.old.signals['depth'].iloc[self.state.old.interval_min:self.state.old.interval_max])
-            self.state.interpretation.table['first_sig'] = self.state.old.signals['pdf_diff_result'].iloc[self.state.old.interval_min:self.state.old.interval_max]
-            self.state.interpretation.table['func'] = self.state.old.signals['pdf_func'].iloc[self.state.old.interval_min:self.state.old.interval_max]
-
-        self.state.interpretation.table = self.state.interpretation.table.reset_index(drop=True)
-        self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['first_sig'].copy()
-        self.state.interpretation.table['corr_coeff'] = 1
+        self.state.interpretation.table = interpretation.prepare_cement(self.state.old, 'pdf')
+        self.state.interpretation.automatic_table = self.state.interpretation.table.copy(deep=True)
 
         self.ui.doubleSpinBox_undefine_max.setMaximum(self.state.interpretation.table['depth'].max())
         self.ui.label_int_undefine.setText('Интервалы неопр. цемента:')
@@ -1663,34 +1220,10 @@ class Controller:
         if self.state.interpretation.table is None:
             return
         """ Функция вытягивания кривой цементограммы - по максимуму """
-        x1_index = self.state.interpretation.table.index[
-            self.state.interpretation.table['depth'] == self.get_nearest_value(self.state.interpretation.table['depth'], self.ui.doubleSpinBox_x1_line.value())].tolist()[0]
-        x2_index = self.state.interpretation.table.index[
-            self.state.interpretation.table['depth'] == self.get_nearest_value(self.state.interpretation.table['depth'], self.ui.doubleSpinBox_x2_line.value())].tolist()[0]
-        if self.ui.checkBox_shift_corr.checkState() == 2:
-            coef_shift = self.state.interpretation.table['first_sig'].iloc[x1_index:x2_index+1].max() - self.ui.doubleSpinBox_y_line.value()
-            self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['first_sig'].copy()
-            self.state.interpretation.table['corr_sig'].iloc[x1_index:x2_index+1] = self.state.interpretation.table['first_sig'].iloc[x1_index:x2_index+1] - coef_shift
-        else:
-            self.state.interpretation.table['plus_sig'] = self.state.interpretation.table['first_sig'] + abs(self.state.interpretation.table['first_sig'].min()) + 1
-            corr_coeff_max = (self.ui.doubleSpinBox_y_line.value() + abs(self.state.interpretation.table['first_sig'].min()) + 1)/\
-                         self.state.interpretation.table['plus_sig'].iloc[x1_index:x2_index+1].max()
-            xmax_index = self.state.interpretation.table.index[self.state.interpretation.table['plus_sig'] == self.get_nearest_value(self.state.interpretation.table['plus_sig'],
-                                                                                      self.state.interpretation.table['plus_sig'].iloc[
-                                                                                      x1_index:x2_index + 1].max())].tolist()[0]
-            if self.ui.checkBox_lin_cor.checkState() == 2:
-                interp_method = 'linear'
-            else:
-                interp_method = 'quadratic'
-            if x1_index == xmax_index:
-                corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
-            elif xmax_index == x2_index:
-                corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
-            else:
-                corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
-            self.state.interpretation.table['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
-            self.state.interpretation.table['plus_sig'] = self.state.interpretation.table['plus_sig']*self.state.interpretation.table['corr_coeff']
-            self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['plus_sig'] - abs(self.state.interpretation.table['first_sig'].min()) - 1
+        self.state.interpretation.table = corrections.corr_sig(
+            self.state.interpretation.table, self.ui.doubleSpinBox_x1_line.value(),
+            self.ui.doubleSpinBox_x2_line.value(), self.ui.doubleSpinBox_y_line.value(),
+            self.ui.checkBox_shift_corr.isChecked(), self.ui.checkBox_lin_cor.isChecked())
         self.draw_cement()
         self.record_correction('corr_sig')
 
@@ -1699,34 +1232,10 @@ class Controller:
         if self.state.interpretation.table is None:
             return
         """ Функция вытягивания кривой цементограммы - по минимуму """
-        x1_index = self.state.interpretation.table.index[
-            self.state.interpretation.table['depth'] == self.get_nearest_value(self.state.interpretation.table['depth'], self.ui.doubleSpinBox_x1_line.value())].tolist()[0]
-        x2_index = self.state.interpretation.table.index[
-            self.state.interpretation.table['depth'] == self.get_nearest_value(self.state.interpretation.table['depth'], self.ui.doubleSpinBox_x2_line.value())].tolist()[0]
-        if self.ui.checkBox_shift_corr.checkState() == 2:
-            coef_shift = self.state.interpretation.table['first_sig'].iloc[x1_index:x2_index+1].min() - self.ui.doubleSpinBox_y_line.value()
-            self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['first_sig'].copy()
-            self.state.interpretation.table['corr_sig'].iloc[x1_index:x2_index+1] = self.state.interpretation.table['first_sig'].iloc[x1_index:x2_index+1] - coef_shift
-        else:
-            self.state.interpretation.table['plus_sig'] = self.state.interpretation.table['first_sig'] + abs(self.state.interpretation.table['first_sig'].min()) + 1
-            corr_coeff_max = (self.ui.doubleSpinBox_y_line.value() + abs(self.state.interpretation.table['first_sig'].min()) + 1) / \
-                             self.state.interpretation.table['plus_sig'].iloc[x1_index:x2_index+1].min()
-            xmax_index = self.state.interpretation.table.index[self.state.interpretation.table['plus_sig'] == self.get_nearest_value(self.state.interpretation.table['plus_sig'],
-                                                                                      self.state.interpretation.table['plus_sig'].iloc[
-                                                                                      x1_index:x2_index+1].min())].tolist()[0]
-            if self.ui.checkBox_lin_cor.checkState() == 2:
-                interp_method = 'linear'
-            else:
-                interp_method = 'quadratic'
-            if x1_index == xmax_index:
-                corr_coeff = interp1d([x1_index, x2_index], [corr_coeff_max, 1], kind='linear')
-            elif xmax_index == x2_index:
-                corr_coeff = interp1d([x1_index, x2_index], [1, corr_coeff_max], kind='linear')
-            else:
-                corr_coeff = interp1d([x1_index, xmax_index, x2_index], [1, corr_coeff_max, 1], kind=interp_method)
-            self.state.interpretation.table['corr_coeff'].iloc[x1_index:x2_index+1] = corr_coeff(range(x1_index, x2_index+1))
-            self.state.interpretation.table['plus_sig'] = self.state.interpretation.table['plus_sig'] * self.state.interpretation.table['corr_coeff']
-            self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['plus_sig'] - abs(self.state.interpretation.table['first_sig'].min()) - 1
+        self.state.interpretation.table = corrections.corr_sig_bottom(
+            self.state.interpretation.table, self.ui.doubleSpinBox_x1_line.value(),
+            self.ui.doubleSpinBox_x2_line.value(), self.ui.doubleSpinBox_y_line.value(),
+            self.ui.checkBox_shift_corr.isChecked(), self.ui.checkBox_lin_cor.isChecked())
         self.draw_cement()
         self.record_correction('corr_sig_bottom')
 
@@ -1735,8 +1244,7 @@ class Controller:
         if self.state.interpretation.table is None:
             return
         """ зафиксировать изменения цементограммы для последующей коррекции """
-        self.state.interpretation.table['first_sig'] = self.state.interpretation.table['corr_sig']
-        self.state.interpretation.table['corr_coeff'] = 1
+        self.state.interpretation.table = corrections.fix_corr(self.state.interpretation.table)
         self.draw_cement()
         self.record_correction('fix_corr')
 
@@ -1745,7 +1253,7 @@ class Controller:
         if self.state.interpretation.table is None:
             return
         """ Сложение цементограммы с функцией затухания - поднимает начало сигнала """
-        self.state.interpretation.table['corr_sig'] = self.state.interpretation.table['first_sig'] + self.state.interpretation.table['func']
+        self.state.interpretation.table = corrections.plus_func(self.state.interpretation.table)
         self.draw_cement()
         self.record_correction('plus_func')
 
@@ -1756,22 +1264,20 @@ class Controller:
         """ добавить интервал цемента вручную """
         min_cem = self.ui.doubleSpinBox_undefine_min.value()
         max_cem = self.ui.doubleSpinBox_undefine_max.value()
-        mincem_i = self.state.interpretation.table.index[self.state.interpretation.table['depth'] == self.get_nearest_value(self.state.interpretation.table['depth'], min_cem)].tolist()[0]
-        maxcem_i = self.state.interpretation.table.index[self.state.interpretation.table['depth'] == self.get_nearest_value(self.state.interpretation.table['depth'], max_cem)].tolist()[0]
         text_int = self.ui.label_int_undefine.text()
         cem = ''
         if self.ui.radioButton_KC.isChecked():
             cem = 'КЦ. '
-            self.state.interpretation.intervals.good.append([mincem_i, maxcem_i])
+            self.state.interpretation.intervals = corrections.add_interval(self.state.interpretation.intervals, self.state.interpretation.table['depth'], min_cem, max_cem, 'good')
         elif self.ui.radioButton_ChC.isChecked():
             cem = 'ЧЦ. '
-            self.state.interpretation.intervals.partial.append([mincem_i, maxcem_i])
+            self.state.interpretation.intervals = corrections.add_interval(self.state.interpretation.intervals, self.state.interpretation.table['depth'], min_cem, max_cem, 'partial')
         elif self.ui.radioButton_OC.isChecked():
             cem = 'ОЦ. '
-            self.state.interpretation.intervals.absent.append([mincem_i, maxcem_i])
+            self.state.interpretation.intervals = corrections.add_interval(self.state.interpretation.intervals, self.state.interpretation.table['depth'], min_cem, max_cem, 'absent')
         elif self.ui.radioButton_NC.isChecked():
             cem = 'НЦ. '
-            self.state.interpretation.intervals.undefined.append([mincem_i, maxcem_i])
+            self.state.interpretation.intervals = corrections.add_interval(self.state.interpretation.intervals, self.state.interpretation.table['depth'], min_cem, max_cem, 'undefined')
         text_int = text_int + '\n' + cem + str(min_cem) + ' - ' + str(max_cem) + ' м.'
         self.ui.label_int_undefine.setText(text_int)
         self.record_correction('add_undefine')
@@ -2871,14 +2377,7 @@ class Controller:
 
 
     def calc_max_int(self, tab1, tab2, i):
-        """ Пересчет интералов отрисовки при загрузке сигналов с разной длиной по одному """
-        if tab2['max_h'][i] < self.ui.doubleSpinBox_int_max.value():
-            res = tab1.index[tab1['depth'] == self.get_nearest_value(tab1['depth'], tab2['max_h'][i])].tolist()[0]
-            return res
-        else:
-            res = tab1.index[tab1['depth'] == self.get_nearest_value(tab1['depth'],
-                                                                    self.ui.doubleSpinBox_int_max.value())].tolist()[0]
-            return res
+        return calc_max_int(tab1, tab2, i, self.ui.doubleSpinBox_int_max.value())
 
 
     def check_all_new(self):
