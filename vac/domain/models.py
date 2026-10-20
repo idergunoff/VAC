@@ -94,6 +94,7 @@ class ReportDetails:
 class Interpretation:
     # None means no interpretation; an empty DataFrame is a valid empty result.
     table: pd.DataFrame | None = None
+    automatic_table: pd.DataFrame | None = None
     signal: SignalIdentity | None = None
     intervals: QualityIntervals = field(default_factory=QualityIntervals)
     corrections: list[ManualCorrection] = field(default_factory=list)

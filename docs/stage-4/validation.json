@@ -1,0 +1,361 @@
+{
+  "date": "2026-10-20",
+  "status": "implemented; technical Linux acceptance passed",
+  "source_commit": "08088a16f35ddd5e4e6b491d9eab3599ecb9737a",
+  "python": "3.12.14",
+  "source_sha256": {
+    "vac/__init__.py": "1d5be3468b7420ff4ffcb2149afe51c5f49a7c4eb44a83f505cf922ed650b9c0",
+    "vac/__main__.py": "a72b9285ed75e3b5b8655255a23dca3fb8c60c1ab6bb12b5d6972117ad11a475",
+    "vac/app.py": "c5331158c957ef7059707cc0098d382e888e3bf6dd7a5fb112427be6d59e4ea8",
+    "vac/calculation.py": "bbbb4ef2e65dd49a3882a389c50ca5a12d7e24847e338503a9df92800a5696cd",
+    "vac/controller.py": "e64f8d6fcfc718588a4601b6f8994b5e032e13bb7695a5454d16de59de7a5ea4",
+    "vac/domain/__init__.py": "65220ab0fbdebc3b517a81f27632a7fb1d96bd19dc174740d8c7fd5618c31658",
+    "vac/domain/models.py": "f89bde2d7b1a931b2429dc6cb4cfae9ceaae1a4322de2fadbfc02d2bac0b3761",
+    "vac/domain/state.py": "d2995348037e5f7d6a3eb30e3def095521417464b670f8d7ec4cf93cda7b094a",
+    "vac/io/__init__.py": "b22fd91e4434d25a80998b16d2192801d0a2526c6df7fcdbaa63c57211771482",
+    "vac/io/lvm.py": "03f9fafe056a3edbb1be93b75281511a3be1d3730737710290bbff210f17e550",
+    "vac/io/twf.py": "b59bc3b24843225454755e0ead634b3cfc2934bb9f46c6f7b1577216ce67c8be",
+    "vac/legacy.py": "671c2e4a31b745e4eae9838f0c45f7b4b3e4a31deec1b505e7851e79ca6d6ba8",
+    "vac/processing/__init__.py": "8eaa12bd9b59fb34be7e64fce278730c3cb1cd73e19acd6aae7a94ba0a9e713e",
+    "vac/processing/corrections.py": "622f4a38b6a61bbdda617190c4905567af5265f60c0591403c365e7122be5f42",
+    "vac/processing/interpretation.py": "01c4322e5556a87371b02258c618a45b5ee88f5322681f87da7a2d39b8a4fc7d",
+    "vac/processing/pdf.py": "fe5de55782cd54721ae6805645e9d0943b6807b7201fcebe6d6da360812aaa37",
+    "vac/processing/preprocessing.py": "d9f0c7f6b09541a210e9f4eded167b731ac1cde9f885db814548a00b5848126b",
+    "vac/processing/sums.py": "ac7bd5c442d62f8eac0f90cc3e8e6e588206407d2d1c4d92bae5bf0fc148a804",
+    "vac/reference.py": "85ed804553b6a59ce7bbc06ea8962631072d3d433cb1bc5e036def4bacd02c05",
+    "vac/resources/__init__.py": "4f3c159cbf7dc52c029206499a5b96017abcf1126b7b5e580ea9e420675ac13d",
+    "vac/services/__init__.py": "12dcd0b84e47f187a3c43a6848c40e1bc325bf0b8ddc1463e2619e6daa66cf5c",
+    "vac/services/analysis.py": "dc2d7e7599a66a3d17d6d18a64dc893325bfe49549159c4488feda2aa5bb8a25"
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "status": "PASS",
+      "tests": 11,
+      "command": "python -W ignore -m unittest discover -s tests/unit"
+    },
+    {
+      "name": "integration",
+      "status": "PASS",
+      "tests": 3,
+      "command": "python -W ignore -m unittest discover -s tests/integration"
+    },
+    {
+      "name": "package_source",
+      "status": "PASS",
+      "command": "python tests/check_package.py"
+    },
+    {
+      "name": "generated_ui",
+      "status": "PASS",
+      "command": "python tools/generate_ui.py --check"
+    },
+    {
+      "name": "strict_comparator_self_check",
+      "status": "PASS",
+      "command": "python tests/check_regression_compare.py"
+    },
+    {
+      "name": "wheel_build_and_contents",
+      "status": "PASS",
+      "command": "python -m pip wheel --no-deps . -w work/dist"
+    },
+    {
+      "name": "wheel_public_launchers_and_headless_imports",
+      "status": "PASS",
+      "candidate": "work/wheel-installed"
+    },
+    {
+      "name": "smoke_launch",
+      "status": "PASS",
+      "command": "python tools/smoke.py --scenario launch"
+    },
+    {
+      "name": "responsive_layout",
+      "status": "PASS",
+      "command": "python tests/check_responsive_layout.py"
+    },
+    {
+      "name": "compileall",
+      "status": "PASS",
+      "command": "python -m compileall -q vac tests tools"
+    },
+    {
+      "name": "diff_check",
+      "status": "PASS",
+      "command": "git diff --check"
+    },
+    {
+      "name": "load_full_new",
+      "status": "PASS",
+      "candidate": "work/stage4-load-new",
+      "baseline": "tests/baselines/stage-1/new",
+      "comparison": "unchanged tools/check_stage3_regression.py"
+    },
+    {
+      "name": "verified_full_new",
+      "status": "PASS",
+      "candidate": "work/stage4-verified-new",
+      "baseline": "tests/baselines/stage-1/new",
+      "comparison": "unchanged tools/check_stage3_regression.py"
+    },
+    {
+      "name": "load_full_old",
+      "status": "PASS",
+      "candidate": "work/stage4-load-old",
+      "baseline": "tests/baselines/stage-1/old",
+      "comparison": "unchanged tools/check_stage3_regression.py"
+    },
+    {
+      "name": "verified_full_old",
+      "status": "PASS",
+      "candidate": "work/stage4-verified-old",
+      "baseline": "tests/baselines/stage-1/old",
+      "comparison": "unchanged tools/check_stage3_regression.py"
+    },
+    {
+      "name": "new_single_against_stage3",
+      "status": "PASS",
+      "oracle": "work/stage4-oracle2-new-single",
+      "candidate": "work/stage4-current-new-single",
+      "comparison": "unchanged tools/regression_compare.py; controller loaded from git show 08088a1:vac/controller.py"
+    },
+    {
+      "name": "new_after-dir_against_stage3",
+      "status": "PASS",
+      "oracle": "work/stage4-oracle2-new-after-dir",
+      "candidate": "work/stage4-current-new-after-dir",
+      "comparison": "unchanged tools/regression_compare.py; controller loaded from git show 08088a1:vac/controller.py"
+    },
+    {
+      "name": "old_single_against_stage3",
+      "status": "PASS",
+      "oracle": "work/stage4-oracle2-old-single",
+      "candidate": "work/stage4-current-old-single",
+      "comparison": "unchanged tools/regression_compare.py; controller loaded from git show 08088a1:vac/controller.py"
+    },
+    {
+      "name": "old_after-dir_against_stage3",
+      "status": "PASS",
+      "oracle": "work/stage4-oracle2-old-after-dir",
+      "candidate": "work/stage4-current-old-after-dir",
+      "comparison": "unchanged tools/regression_compare.py; controller loaded from git show 08088a1:vac/controller.py"
+    }
+  ],
+  "extended_oracle": {
+    "source_commit": "08088a1",
+    "controller_sha256": "a87f94273b3ca4e55b89aaeff41592bc31060b7789cdfed956524cbcfd0c17a3",
+    "description": "Stage-3 Controller on deterministic synthetic input; widget signals blocked.",
+    "pdf": {
+      "new": {
+        "columns": [
+          "depth",
+          1,
+          2,
+          3,
+          "pdf",
+          "pdf_envelope",
+          "pdf_envelope-1",
+          "pdf_mean",
+          "pdf_func",
+          "pdf_rel_ampl",
+          "pdf_mean-1",
+          "pdf_diff_norm",
+          "pdf_diff_norm-1",
+          "pdf_diff_result"
+        ],
+        "interval": [
+          4,
+          94
+        ],
+        "window": 7,
+        "difference_scale": 2
+      },
+      "old": {
+        "columns": [
+          "depth",
+          1,
+          2,
+          3,
+          "pdf_envelope",
+          "pdf_envelope-1",
+          "pdf_mean",
+          "pdf_func",
+          "pdf_rel_ampl",
+          "pdf_mean-1",
+          "pdf_diff_norm",
+          "pdf_diff_norm-1",
+          "pdf_diff_result"
+        ],
+        "interval": [
+          4,
+          94
+        ],
+        "window": 7,
+        "difference_scale": 2
+      }
+    },
+    "corrections": {
+      "corr_sig_0_0": {
+        "operation": "corr_sig",
+        "shift": false,
+        "linear": false,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff",
+          "plus_sig"
+        ]
+      },
+      "corr_sig_0_1": {
+        "operation": "corr_sig",
+        "shift": false,
+        "linear": true,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff",
+          "plus_sig"
+        ]
+      },
+      "corr_sig_1_0": {
+        "operation": "corr_sig",
+        "shift": true,
+        "linear": false,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff"
+        ]
+      },
+      "corr_sig_1_1": {
+        "operation": "corr_sig",
+        "shift": true,
+        "linear": true,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff"
+        ]
+      },
+      "corr_sig_bottom_0_0": {
+        "operation": "corr_sig_bottom",
+        "shift": false,
+        "linear": false,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff",
+          "plus_sig"
+        ]
+      },
+      "corr_sig_bottom_0_1": {
+        "operation": "corr_sig_bottom",
+        "shift": false,
+        "linear": true,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff",
+          "plus_sig"
+        ]
+      },
+      "corr_sig_bottom_1_0": {
+        "operation": "corr_sig_bottom",
+        "shift": true,
+        "linear": false,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff"
+        ]
+      },
+      "corr_sig_bottom_1_1": {
+        "operation": "corr_sig_bottom",
+        "shift": true,
+        "linear": true,
+        "x1": 10,
+        "x2": 50,
+        "y": 0.5,
+        "columns": [
+          "depth",
+          "first_sig",
+          "func",
+          "corr_sig",
+          "corr_coeff"
+        ]
+      }
+    },
+    "correction_columns": [
+      "depth",
+      "first_sig",
+      "func",
+      "corr_sig",
+      "corr_coeff"
+    ],
+    "arrays_sha256": "af428c7e414910918095a4d1c17cc88e9d8e076c5cd6546f7ec4ba1bfb70ea59"
+  },
+  "headless_contract": {
+    "no_qt": true,
+    "no_plotting_or_reporting_imports": true,
+    "no_intermediate_exports": true,
+    "repeated_analysis_matches": true,
+    "source_tables_unchanged": true
+  },
+  "tolerances": {
+    "rtol": 1e-12,
+    "atol": 1e-12,
+    "depth_and_classes": "exact in FULL comparator"
+  },
+  "unchanged": [
+    "stage-1 baselines",
+    "strict comparator",
+    "stage-3 regression checker",
+    "formulas and thresholds"
+  ],
+  "intentional_changes": [
+    "Malformed or incomplete input is rejected before replacing existing measurements",
+    "Automatic cement curve remains separate after correction commit"
+  ],
+  "remaining": [
+    "Windows and visual GUI/Word acceptance",
+    "Known legacy numerical/indexing behaviour",
+    "All-or-nothing single-file axis extension/calculation",
+    "Stage 5 reporting/export separation"
+  ]
+}

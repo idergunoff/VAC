@@ -1,0 +1,188 @@
+{
+  "source_commit": "08088a1",
+  "controller_sha256": "a87f94273b3ca4e55b89aaeff41592bc31060b7789cdfed956524cbcfd0c17a3",
+  "description": "Stage-3 Controller on deterministic synthetic input; widget signals blocked.",
+  "pdf": {
+    "new": {
+      "columns": [
+        "depth",
+        1,
+        2,
+        3,
+        "pdf",
+        "pdf_envelope",
+        "pdf_envelope-1",
+        "pdf_mean",
+        "pdf_func",
+        "pdf_rel_ampl",
+        "pdf_mean-1",
+        "pdf_diff_norm",
+        "pdf_diff_norm-1",
+        "pdf_diff_result"
+      ],
+      "interval": [
+        4,
+        94
+      ],
+      "window": 7,
+      "difference_scale": 2
+    },
+    "old": {
+      "columns": [
+        "depth",
+        1,
+        2,
+        3,
+        "pdf_envelope",
+        "pdf_envelope-1",
+        "pdf_mean",
+        "pdf_func",
+        "pdf_rel_ampl",
+        "pdf_mean-1",
+        "pdf_diff_norm",
+        "pdf_diff_norm-1",
+        "pdf_diff_result"
+      ],
+      "interval": [
+        4,
+        94
+      ],
+      "window": 7,
+      "difference_scale": 2
+    }
+  },
+  "corrections": {
+    "corr_sig_0_0": {
+      "operation": "corr_sig",
+      "shift": false,
+      "linear": false,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff",
+        "plus_sig"
+      ]
+    },
+    "corr_sig_0_1": {
+      "operation": "corr_sig",
+      "shift": false,
+      "linear": true,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff",
+        "plus_sig"
+      ]
+    },
+    "corr_sig_1_0": {
+      "operation": "corr_sig",
+      "shift": true,
+      "linear": false,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff"
+      ]
+    },
+    "corr_sig_1_1": {
+      "operation": "corr_sig",
+      "shift": true,
+      "linear": true,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff"
+      ]
+    },
+    "corr_sig_bottom_0_0": {
+      "operation": "corr_sig_bottom",
+      "shift": false,
+      "linear": false,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff",
+        "plus_sig"
+      ]
+    },
+    "corr_sig_bottom_0_1": {
+      "operation": "corr_sig_bottom",
+      "shift": false,
+      "linear": true,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff",
+        "plus_sig"
+      ]
+    },
+    "corr_sig_bottom_1_0": {
+      "operation": "corr_sig_bottom",
+      "shift": true,
+      "linear": false,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff"
+      ]
+    },
+    "corr_sig_bottom_1_1": {
+      "operation": "corr_sig_bottom",
+      "shift": true,
+      "linear": true,
+      "x1": 10,
+      "x2": 50,
+      "y": 0.5,
+      "columns": [
+        "depth",
+        "first_sig",
+        "func",
+        "corr_sig",
+        "corr_coeff"
+      ]
+    }
+  },
+  "correction_columns": [
+    "depth",
+    "first_sig",
+    "func",
+    "corr_sig",
+    "corr_coeff"
+  ],
+  "arrays_sha256": "af428c7e414910918095a4d1c17cc88e9d8e076c5cd6546f7ec4ba1bfb70ea59"
+}

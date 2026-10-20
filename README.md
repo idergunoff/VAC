@@ -114,3 +114,30 @@ python -W ignore -m unittest discover -s tests/integration
 
 Полное старое сравнение этапа 1 ожидаемо обнаруживает изменения очистки состояния;
 команды проверки неизменных сценариев и новых правил приведены в отчёте этапа 3.
+
+## Вычисления без GUI (этап 4)
+
+Загрузчики LVM/TWF находятся в `vac.io`, предобработка, суммы, PDF,
+интерпретация и ручные поправки — в `vac.processing`. Полный запуск без Qt
+и промежуточных файлов:
+
+```python
+from vac.io.lvm import load_directory
+from vac.domain.models import ProcessingParameters
+from vac.services.analysis import analyze
+
+measurements, files = load_directory("путь/к/комплекту", mean=60)
+parameters = ProcessingParameters(
+    interval_min=10, interval_max=150, normalization=0.2,
+    function_shift=0.1, difference_scale=1, mean_window=40,
+)
+result = analyze(measurements, parameters)  # рекомендуемое окно, как в calc_to_int
+signals = result.measurements.signals
+# result.classification_errors содержит ошибки частичной legacy-классификации.
+```
+
+Для заданного окна передайте `automatic_window=False`. Сервис обрабатывает
+собственную копию набора. Низкоуровневые проходы работают с явными рабочими
+таблицами; функции ручной коррекции возвращают новые таблицы.
+[Отчёт этапа 4](docs/stage-4/README.md) описывает порядок файлов, границы,
+сохранённые различия оборудования, изменения ошибок чтения и проверки.
