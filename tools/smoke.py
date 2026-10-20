@@ -31,14 +31,14 @@ with tempfile.TemporaryDirectory(prefix='VAC проверка с пробела�
     sys.excepthook = record_error
 
     def event_loop(app):
-        from vac import legacy
-        scope = vars(legacy)
+        from application_scope import ApplicationScope
+        scope = ApplicationScope(sys._getframe(1).f_locals['controller'])
 
         def check():
             try:
                 assert scope['MainWindow'].isVisible(), 'Window not visible'
                 assert scope['ui'].graphicsView is not None
-                template = docx.Document(str(template_path()))
+                template = docx.Document(root / 'vac' / 'resources' / 'template.docx')
                 assert len(template.tables) >= 2
                 result['template_tables'] = len(template.tables)
                 if args.scenario != 'launch':
@@ -64,7 +64,6 @@ with tempfile.TemporaryDirectory(prefix='VAC проверка с пробела�
         return int(not result['passed'])
 
     QtWidgets.QApplication.exec_ = event_loop
-    sys.path.insert(0, str(root))
-    from vac.resources import template_path
     os.chdir(scratch)
+    sys.path.insert(0, str(root))
     runpy.run_path(str(root / 'VAC_python.py'), run_name='__main__')

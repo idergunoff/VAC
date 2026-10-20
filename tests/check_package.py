@@ -43,9 +43,11 @@ assert not Path('template.docx').exists()
 called = []
 def event_loop(self):
     called.append(True)
-    assert legacy.MainWindow.isVisible()
-    assert legacy.ui.graphicsView is not None
-    assert legacy.proxy is not None
+    import sys
+    controller = sys._getframe(1).f_locals["controller"]
+    assert controller.window.isVisible()
+    assert controller.ui.graphicsView is not None
+    assert controller.proxy is not None
     QtCore.QTimer.singleShot(0, self.quit)
     return original()
 original = app_type.exec_
