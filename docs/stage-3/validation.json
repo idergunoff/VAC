@@ -1,0 +1,148 @@
+{
+  "date": "2026-10-20",
+  "base_commit": "52a7c25f2862cb181b8cc5a82a39452a7180c892",
+  "python": "3.12.14",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "checks": {
+    "unit_tests": 5,
+    "integration_tests": 1,
+    "regression_compare_mutations": "PASS",
+    "responsive_layout": "PASS",
+    "offscreen_launch": "PASS",
+    "import_without_qt": "PASS",
+    "wheel_build": "PASS",
+    "installed_wheel_outside_repository": "PASS"
+  },
+  "regression": {
+    "new": {
+      "steps": [
+        {
+          "name": "01-load",
+          "status": "ok"
+        },
+        {
+          "name": "02-select",
+          "status": "ok"
+        },
+        {
+          "name": "03-interval",
+          "status": "ok"
+        },
+        {
+          "name": "04-mean-norm",
+          "status": "ok"
+        },
+        {
+          "name": "05-sum",
+          "status": "ok"
+        },
+        {
+          "name": "06-quality",
+          "status": "ok"
+        },
+        {
+          "name": "07-cement-source",
+          "status": "ok"
+        },
+        {
+          "name": "08-correction",
+          "status": "ok"
+        },
+        {
+          "name": "09-cementogram",
+          "status": "ok"
+        },
+        {
+          "name": "10-save",
+          "status": "ok"
+        },
+        {
+          "name": "11-restore",
+          "status": "ok"
+        },
+        {
+          "name": "12-reload",
+          "status": "ok"
+        }
+      ],
+      "qt_errors": [],
+      "comparison": [
+        "PASS regression actual",
+        "PASS stage 3: new steps 01–10 + report unchanged; restore/reload lifetime verified"
+      ],
+      "manifest_sha256": "abbf818bb82e819bb9df9372d82d73d114b4ab14420874a4d9f7aa6d745d1cbe"
+    },
+    "old": {
+      "steps": [
+        {
+          "name": "01-load",
+          "status": "ok"
+        },
+        {
+          "name": "02-select",
+          "status": "ok"
+        },
+        {
+          "name": "03-interval",
+          "status": "ok"
+        },
+        {
+          "name": "04-mean-norm",
+          "status": "ok"
+        },
+        {
+          "name": "05-sum",
+          "status": "ok"
+        },
+        {
+          "name": "06-quality",
+          "status": "ok"
+        },
+        {
+          "name": "07-cement-source",
+          "status": "ok"
+        },
+        {
+          "name": "08-correction",
+          "status": "ok"
+        },
+        {
+          "name": "09-cementogram",
+          "status": "ok"
+        },
+        {
+          "name": "10-save",
+          "status": "ok"
+        },
+        {
+          "name": "11-restore",
+          "status": "ok"
+        },
+        {
+          "name": "12-reload",
+          "status": "ok"
+        }
+      ],
+      "qt_errors": [],
+      "comparison": [
+        "PASS regression actual",
+        "PASS stage 3: old steps 01–10 + report unchanged; restore/reload lifetime verified"
+      ],
+      "manifest_sha256": "cb64b481a5f1678cc90f9cc20db730ee3c45d95cfc1638cc25daad1fdb10ef15"
+    }
+  },
+  "source_sha256": {
+    "VAC_python.py": "b67b8dab43fd4968500ddb93037ae5b4332eb0d5e3d4dcb99ab6087bbb3ccc76",
+    "vac/app.py": "ea8bc63f2b5681983d8cbabb396e59d326e893ae95e976449a1c4b531fdaa426",
+    "vac/controller.py": "f942f3ced3910fca1f47074d07b597d7b7271f6ebf604101c8fbb0bad3787377",
+    "vac/calculation.py": "bbbb4ef2e65dd49a3882a389c50ca5a12d7e24847e338503a9df92800a5696cd",
+    "vac/domain/models.py": "4d414d7ec88ed35b98e3b77f71dad457bf21397f078581341700c1e9d5429d09",
+    "vac/domain/state.py": "d2995348037e5f7d6a3eb30e3def095521417464b670f8d7ec4cf93cda7b094a",
+    "vac/resources/template.docx": "76d06caa0512de94b3d2d6a119dc76611e54464a352ee29631d8fc967d07b94b"
+  },
+  "limitations": [
+    "Windows and real desktop GUI not verified",
+    "Stage 1 full equality intentionally differs at restore/reload; original baselines unchanged",
+    "Remaining legacy calculations and I/O stay in Controller for stages 4–5"
+  ]
+}

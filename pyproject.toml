@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vac-cementometry"
+version = "0.1.0"
+requires-python = ">=3.12"
+dynamic = ["dependencies"]
+
+[project.scripts]
+vac = "vac.app:main"
+
+[tool.setuptools]
+packages = ["vac", "vac.domain"]
+py-modules = ["VAC_dialog", "standard", "responsive_layout"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.package-data]
+vac = ["resources/*.docx"]

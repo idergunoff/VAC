@@ -62,7 +62,8 @@ manifest = {'upstream': '6a99815036984389e51d8f0c934069af4332e278',
             'compatibility': 'ENV-01 int(auto_mean_win), see compatibility.md',
             'device': args.device, 'case': args.case, 'python': platform.python_version(),
             'platform': platform.platform(), 'dependencies': {d.metadata['Name']: d.version for d in importlib.metadata.distributions()},
-            'source_sha256': {p: sha(ROOT / p) for p in ['VAC_python.py', 'VAC_dialog.py', 'responsive_layout.py', 'standard.py', 'template.docx']},
+            'source_sha256': {p: sha(ROOT / p) for p in ['VAC_python.py', 'VAC_dialog.py', 'responsive_layout.py', 'standard.py', 'template.docx',
+                'vac/controller.py', 'vac/calculation.py', 'vac/domain/models.py', 'vac/domain/state.py']},
             'inputs': [], 'read_order': [], 'steps': [], 'qt_errors': []}
 original_open = builtins.open
 original_exec = QtWidgets.QApplication.exec_
@@ -98,7 +99,8 @@ with tempfile.TemporaryDirectory(prefix='VAC эталоны с пробелам�
     sys.excepthook = qt_error
 
     def event_loop(app):
-        scope = sys._getframe(1).f_globals
+        from application_scope import ApplicationScope
+        scope = ApplicationScope(sys._getframe(1).f_locals['controller'])
         ui = scope['ui']
         suffix = '' if args.device == 'new' else '_old'
         def call(name):

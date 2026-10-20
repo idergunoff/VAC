@@ -31,13 +31,14 @@ with tempfile.TemporaryDirectory(prefix='VAC проверка с пробела�
     sys.excepthook = record_error
 
     def event_loop(app):
-        scope = sys._getframe(1).f_globals
+        from application_scope import ApplicationScope
+        scope = ApplicationScope(sys._getframe(1).f_locals['controller'])
 
         def check():
             try:
                 assert scope['MainWindow'].isVisible(), 'Window not visible'
                 assert scope['ui'].graphicsView is not None
-                template = docx.Document('template.docx')
+                template = docx.Document(root / 'vac' / 'resources' / 'template.docx')
                 assert len(template.tables) >= 2
                 result['template_tables'] = len(template.tables)
                 if args.scenario != 'launch':
