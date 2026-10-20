@@ -335,7 +335,7 @@ def calc_to_int():
                                 get_nearest_value(all_signals['depth'], ui.doubleSpinBox_int_max.value())].tolist()[0]
     # расчет рекомендуемого окна усреднения по формуле из Щелкуна, установка значения в спинбок
     auto_mean_win = (int_max - int_min) / (1 + 3.322 * np.log(int_max - int_min)) / 2.302585
-    ui.spinBox_mean_win.setValue(auto_mean_win)
+    ui.spinBox_mean_win.setValue(int(auto_mean_win))
     mean_win = ui.spinBox_mean_win.value()
 
     ui.progressBar.setMaximum(8)
@@ -419,7 +419,7 @@ def calc_to_int_old():
     int_max_old = all_signals_old.index[all_signals_old['depth'] ==
                             get_nearest_value(all_signals_old['depth'], ui.doubleSpinBox_int_max.value())].tolist()[0]
     auto_mean_win = (int_max_old - int_min_old) / (1 + 3.322 * np.log(int_max_old - int_min_old)) / 2.302585
-    ui.spinBox_mean_win_old.setValue(auto_mean_win)
+    ui.spinBox_mean_win_old.setValue(int(auto_mean_win))
     mean_win = ui.spinBox_mean_win_old.value()
     ui.progressBar.setMaximum(12)
     ui.label_info.setText('Расчет кривых старого оборудования...')
