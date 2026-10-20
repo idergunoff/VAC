@@ -1,0 +1,13 @@
+Fontconfig error: No writable cache directories
+QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-agent'
+Fontconfig error: No writable cache directories
+This plugin does not support propagateSizeHints()
+{
+  "scenario": "launch",
+  "passed": true,
+  "exceptions": [],
+  "template_tables": 2,
+  "outputs": [
+    "template.docx"
+  ]
+}
