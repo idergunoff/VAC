@@ -62,8 +62,8 @@ manifest = {'upstream': '6a99815036984389e51d8f0c934069af4332e278',
             'compatibility': 'ENV-01 int(auto_mean_win), see compatibility.md',
             'device': args.device, 'case': args.case, 'python': platform.python_version(),
             'platform': platform.platform(), 'dependencies': {d.metadata['Name']: d.version for d in importlib.metadata.distributions()},
-            'source_sha256': {p: sha(ROOT / p) for p in ['VAC_python.py', 'VAC_dialog.py', 'responsive_layout.py', 'standard.py', 'template.docx',
-                'vac/controller.py', 'vac/calculation.py', 'vac/domain/models.py', 'vac/domain/state.py']},
+            'source_sha256': {p: sha(ROOT / p) for p in ['VAC_python.py', 'VAC_dialog.py', 'responsive_layout.py', 'standard.py', 'vac/resources/template.docx',
+                'vac/reference.py', 'vac/app.py', 'vac/controller.py', 'vac/calculation.py', 'vac/domain/models.py', 'vac/domain/state.py']},
             'inputs': [], 'read_order': [], 'steps': [], 'qt_errors': []}
 original_open = builtins.open
 original_exec = QtWidgets.QApplication.exec_
@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='VAC эталоны с пробелам�
     sample = ROOT / 'пример' / ('новое оборудование' if args.device == 'new' else 'старое оборудование')
     target = scratch / sample.name
     shutil.copytree(sample, target)
-    shutil.copy2(ROOT / 'template.docx', scratch)
+    shutil.copy2(ROOT / 'vac/resources/template.docx', scratch)
     for p in sorted(target.rglob('*')):
         if p.is_file():
             manifest['inputs'].append({'path': str(p.relative_to(target)), 'sha256': sha(p), 'size': p.stat().st_size})

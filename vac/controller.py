@@ -29,16 +29,16 @@ import matplotlib.ticker as ticker
 
 import seaborn as sns
 
-from standard import *
+from .reference import good_new, good_old, bad_new, bad_old, depth_new, depth_old
 
 
-from pathlib import Path
+from .resources import template_path
 from vac.domain.state import ApplicationState
 from vac.domain.models import ProcessingParameters, ProcessingResult, SignalIdentity, ManualCorrection, ReportDetails
 from vac.calculation import calculate_new, calculate_old, classify, ClassificationError
 from vac.domain.models import QualityIntervals
 
-TEMPLATE_PATH = Path(__file__).resolve().parent / "resources" / "template.docx"
+TEMPLATE_PATH = template_path()
 
 class Controller:
     """One window owns one state; legacy formulas are retained during extraction."""

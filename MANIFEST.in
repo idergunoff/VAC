@@ -1,0 +1,2 @@
+include VAC_dialog.ui
+include tools/generate_ui.py

@@ -14,11 +14,11 @@ def create_window(state=None):
     return window, controller
 
 
-def main():
+def main(argv=None):
     from PyQt5 import QtCore, QtWidgets
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
-    app = QtWidgets.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv if argv is None else argv)
     window, controller = create_window()
     window.show()
     window.showMaximized()

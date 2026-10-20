@@ -64,7 +64,6 @@ with tempfile.TemporaryDirectory(prefix='VAC проверка с пробела�
         return int(not result['passed'])
 
     QtWidgets.QApplication.exec_ = event_loop
-    shutil.copy2(root / 'template.docx', scratch)
     os.chdir(scratch)
     sys.path.insert(0, str(root))
     runpy.run_path(str(root / 'VAC_python.py'), run_name='__main__')

@@ -4,7 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vac-cementometry"
-version = "0.1.0"
+version = "0.2.0"
+description = "Desktop vibroacoustic cementometry interpretation"
+readme = "README.md"
 requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
@@ -12,11 +14,11 @@ dynamic = ["dependencies"]
 vac = "vac.app:main"
 
 [tool.setuptools]
-packages = ["vac", "vac.domain"]
-py-modules = ["VAC_dialog", "standard", "responsive_layout"]
+packages = ["vac", "vac.resources", "vac.domain"]
+py-modules = ["VAC_dialog", "responsive_layout", "standard", "VAC_python", "VAC_python_mini"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools.package-data]
-vac = ["resources/*.docx"]
+"vac.resources" = ["*.docx"]
