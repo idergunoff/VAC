@@ -1,0 +1,13 @@
+# Runtime dependencies for the current VAC application.
+# Use Python 3.12 (64-bit); these pins match the existing Linux environment.
+# Windows installation and GUI behavior still need verification.
+# Install in an activated venv: python -m pip install -r requirements.txt
+# Direct dependencies are pinned; this is not a full transitive lock file.
+numpy==1.26.4
+pandas==2.2.3
+scipy==1.13.1
+PyQt5==5.15.11
+pyqtgraph==0.13.7
+matplotlib==3.9.4
+seaborn==0.13.2
+python-docx==1.1.2
