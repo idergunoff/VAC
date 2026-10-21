@@ -15,6 +15,10 @@ def create_window(state=None):
 
 
 def main(argv=None):
+    import logging
+    import os
+    if os.environ.get('VAC_DIAGNOSTICS') == '1':
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s %(message)s')
     from PyQt5 import QtCore, QtWidgets
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)

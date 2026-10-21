@@ -3,6 +3,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from hashlib import sha256
 from pathlib import Path
+import logging
 import pickle
 import sqlite3
 
@@ -13,6 +14,8 @@ from ..io import lvm, twf
 from ..processing.preprocessing import envelope
 from ..storage import Source, InputChannel, Study, Run, Signal
 from . import snapshot
+
+log = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,6 +37,7 @@ class ImportFailure(ValueError):
 
 
 def import_directory(archive, well_id, directory, equipment, mean=5):
+    log.info('archive_import_started equipment=%s', equipment)
     directory = Path(directory)
     report = ImportReport()
     records = []
@@ -67,7 +71,10 @@ def import_directory(archive, well_id, directory, equipment, mean=5):
     except (ValueError, OSError, KeyError, IndexError, sqlite3.Error) as exc:
         report.accepted = [name for name, _ in records]
         report.errors.append(str(exc))
+        log.warning('archive_import_failed equipment=%s error_type=%s', equipment, type(exc).__name__)
         raise ImportFailure(report) from exc
+    log.info('archive_import_complete equipment=%s sources=%d channels=%d duplicates=%d',
+             equipment, len(sources), len(channels), len(report.duplicates))
     return report
 
 
@@ -141,14 +148,17 @@ def save_version(archive, study_id, state, widgets, provenance=None):
             raise ValueError('Версия относится к другому исследованию')
         algorithm, reference = provenance['algorithm_version'], provenance['reference_hash']
     run = Run(ids, params, 'gui-state-v1', algorithm, reference, version, signals, statistics)
-    return archive.save_gui_version(study_id, run, metadata, arrays,
+    identity = archive.save_gui_version(study_id, run, metadata, arrays,
         table_arrays(interp.automatic_table), table_arrays(interp.table),
         [(c.operation, dict(c.parameters)) for c in interp.corrections])
+    log.info('archive_version_saved algorithm=%s program=%s reference=%s', algorithm, version, reference)
+    return identity
 
 
 def open_version(archive, run_id):
     metadata, arrays, interpretation_id = archive.open_gui_version(run_id)
     value = snapshot.decode(metadata, arrays)
+    log.info('archive_version_opened snapshot_schema=gui-state-v1')
     return value['state'], value['widgets'], interpretation_id
 
 

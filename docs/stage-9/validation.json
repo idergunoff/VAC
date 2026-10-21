@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-21",
+  "base_commit": "11d529559fd8d73927ba4765b2a2a48705ed7481",
+  "base_tree": "d2fa87b90e1769e45a8121619d1aa41a8269f782",
+  "environment": "Linux / Python 3.12.14 / pinned project dependencies / Qt offscreen / Matplotlib Agg",
+  "unit_tests": {"count": 11, "status": "PASS"},
+  "integration_tests": {"count": 24, "status": "PASS"},
+  "reliability_tests": {
+    "count": 7,
+    "status": "PASS",
+    "clean_restore": "Exact SQL dump equality, including every BLOB and metadata; inputs, parameters, manual correction, report and legacy attachment reopened twice after deletion of the original archive",
+    "wal": "Committed WAL data included; concurrent uncommitted transaction excluded",
+    "corruption": "Payload checksum failure rejects copy and cleans temporary file",
+    "migration_validation": "Unknown migrations and modified checksums rejected without publication",
+    "upgrade": "Stage 7 schema 001 copied unchanged; restored copy upgraded to 002; existing well preserved",
+    "failed_upgrade": "Injected SQL failure publishes no destination and preserves the backup",
+    "writer_lock": "Second writer rejected with bounded busy timeout; first transaction rolled back; retry and reopening succeed",
+    "abrupt_exit": "Separate process exits inside a transaction; reopening recovers only committed data and permits new writes"
+  },
+  "gui_recovery": {
+    "equipment": ["LVM", "TWF"],
+    "snapshot": "Restore into a new directory; exact signals, statistics, automatic and corrected tables, correction history, intervals and saved widget state; no recalculation",
+    "report": "DOCX generated from restored GUI state; embedded report copied and restored byte-for-byte",
+    "phase_A": "Unchanged baseline comparison and tolerances",
+    "versions": "New calculation creates a new version; older result remains available"
+  },
+  "headless": "Both examples processed without Qt; existing unit contracts enforce no intermediate file writes and no database requirement in the analysis core",
+  "performance": {
+    "status": "PASS all provisional engineering budgets on supplied examples",
+    "artifact": "measurements.json",
+    "repeats": 3,
+    "method": "Medians measured without concurrent test processes, warm process/cache; no optimization or tolerance changes"
+  },
+  "source_launchers": "PASS inert imports, resources and three launchers from foreign CWD",
+  "wheel": "PASS built offline with system setuptools; new module and both migrations included; three launchers, backup/restore API and all CLI operations tested from foreign CWD without Qt for recovery operations",
+  "syntax_and_whitespace": "PASS compileall and git diff --check",
+  "unverified": [
+    "Windows and hard-link behavior on target filesystem",
+    "Real GUI and visual Word acceptance",
+    "Production archive sizes and agreed processing SLA",
+    "Backup media, retention policy and power-loss resilience"
+  ]
+}
