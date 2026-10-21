@@ -33,7 +33,7 @@ class CalculationTests(unittest.TestCase):
     def test_both_equipment_and_repeat(self):
         for equipment, calculate in [('new', calculate_new), ('old', calculate_old)]:
             with self.subTest(equipment=equipment):
-                directory = ROOT / 'tests/baselines/stage-1' / equipment / '03-interval'
+                directory = ROOT / 'tests/fixtures/current' / equipment / 'calculation'
                 suffix = '' if equipment == 'new' else '_old'
                 settings = json.loads((directory / 'settings.json').read_text())
                 measurements = MeasurementSet(equipment)

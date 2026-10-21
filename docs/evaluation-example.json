@@ -1,0 +1,20 @@
+{
+  "schema": "vac-evaluation-v1",
+  "provenance": {
+    "algorithm_version": "synthetic-demo-only",
+    "code_revision": "synthetic-no-production-algorithm",
+    "reference_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "parameters": {"channel": "synthetic", "start_index": 0, "step": 1, "axis_unit": "sample"},
+    "annotation_revision": "synthetic-demo-v1",
+    "hypothesis": "Synthetic one-sample boundary shift; no field quality claim"
+  },
+  "studies": [{
+    "well_id": "synthetic-well",
+    "study_id": "synthetic-study",
+    "split": "evaluation",
+    "input_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "axis": "uniform_sample_index",
+    "truth": [0, 0, 1, 1, 2, 2, 3, 3],
+    "prediction": [0, 1, 1, 1, 2, 2, 3, 3]
+  }]
+}

@@ -31,7 +31,7 @@ from vac.storage.backup import backup, restore
 @contextmanager
 def sample_order(equipment):
     root = ROOT / 'пример' / ('новое оборудование' if equipment == 'new' else 'старое оборудование')
-    order = json.loads((ROOT / 'tests/baselines/stage-1' / equipment / 'manifest.json').read_text())['read_order'][:9 if equipment == 'new' else 13]
+    order = json.loads((ROOT / 'tests/fixtures/current' / equipment / 'manifest.json').read_text())['read_order'][:9 if equipment == 'new' else 13]
     if equipment == 'new':
         folders = {}
         for name in order:
@@ -69,7 +69,7 @@ class ArchiveGuiTests(unittest.TestCase):
         with Archive(self.path) as db, sample_order(equipment) as root:
             return service.import_directory(db, self.well, root, equipment, mean=40)
 
-    def test_both_full_cycles_against_phase_a_and_new_versions(self):
+    def test_both_full_cycles_and_new_versions(self):
         for equipment in ('new', 'old'):
             with self.subTest(equipment=equipment), patch.object(plt.Figure, 'show'):
                 report = self.import_sample(equipment)
@@ -85,7 +85,7 @@ class ArchiveGuiTests(unittest.TestCase):
                     menu.open_study(report.study_id)
                 self.assertIsNone(getattr(self.c.state, equipment).result)
                 menu.recalculate()
-                baseline = ROOT / 'tests/baselines/stage-1' / equipment / '01-load'
+                baseline = ROOT / 'tests/fixtures/current' / equipment / 'analysis'
                 suffix = '' if equipment == 'new' else '_old'
                 expected = read_table(baseline, 'all_signals' + suffix)
                 actual = getattr(self.c.state, equipment)
@@ -177,10 +177,10 @@ class ArchiveGuiTests(unittest.TestCase):
             self.assertEqual(len(db.list_studies(self.well)), before)
             self.assertEqual(db._db.execute('PRAGMA foreign_key_check').fetchall(), [])
             service.import_directory(db, self.well, root, 'new')
-            identity, limits = service.import_trusted_vac(db, report.study_id, ROOT / 'tests/baselines/stage-1/new/settings.vac')
+            identity, limits = service.import_trusted_vac(db, report.study_id, ROOT / 'tests/fixtures/current/new/settings.vac')
             self.assertTrue(limits)
             self.assertEqual(db.open_legacy_attachment(identity)['payload'],
-                             (ROOT / 'tests/baselines/stage-1/new/settings.vac').read_bytes())
+                             (ROOT / 'tests/fixtures/current/new/settings.vac').read_bytes())
             self.assertEqual(len(db.list_legacy_attachments(report.study_id)), 1)
             self.assertEqual(db.list_runs(report.study_id), [])
         menu = self.c.archive_menu

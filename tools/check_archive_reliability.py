@@ -16,7 +16,7 @@ from vac.services.archive import import_directory, open_measurements
 from vac.services.analysis import analyze
 from vac.domain.models import ProcessingParameters
 
-# Engineering budgets declared before measurement; storage targets from stage 6.
+# Engineering budgets for the bundled examples; not a production SLA.
 BUDGET_MS = dict(import_ms=2000, open_ms=1000, processing_ms=5000)
 
 
@@ -32,8 +32,8 @@ def measure():
                   timing='median; warm process/cache, includes commits; processing excludes GUI', datasets={})
     with tempfile.TemporaryDirectory(prefix='VAC reliability ') as scratch:
         for equipment, folder in [('new', 'новое оборудование'), ('old', 'старое оборудование')]:
-            baseline = ROOT / 'tests/baselines/stage-1' / equipment
-            settings = json.loads((baseline / '01-load/settings.json').read_text())
+            baseline = ROOT / 'tests/fixtures/current' / equipment
+            settings = json.loads((baseline / 'analysis/settings.json').read_text())
             suffix = '' if equipment == 'new' else '_old'
             params = ProcessingParameters(settings['doubleSpinBox_int_min'], settings['doubleSpinBox_int_max'],
                 settings['doubleSpinBox_coeff_norm' + suffix], settings['doubleSpinBox_coeff_func' + suffix],

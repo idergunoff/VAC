@@ -31,13 +31,12 @@ with tempfile.TemporaryDirectory(prefix='VAC проверка с пробела�
     sys.excepthook = record_error
 
     def event_loop(app):
-        from application_scope import ApplicationScope
-        scope = ApplicationScope(sys._getframe(1).f_locals['controller'])
+        controller = sys._getframe(1).f_locals['controller']
 
         def check():
             try:
-                assert scope['MainWindow'].isVisible(), 'Window not visible'
-                assert scope['ui'].graphicsView is not None
+                assert controller.window.isVisible(), 'Window not visible'
+                assert controller.ui.graphicsView is not None
                 template = docx.Document(root / 'vac' / 'resources' / 'template.docx')
                 assert len(template.tables) >= 2
                 result['template_tables'] = len(template.tables)
@@ -47,8 +46,8 @@ with tempfile.TemporaryDirectory(prefix='VAC проверка с пробела�
                     target = Path(scratch) / sample.name
                     shutil.copytree(sample, target)
                     QtWidgets.QFileDialog.getExistingDirectory = staticmethod(lambda *a, **kw: str(target))
-                    scope['open_dir' if args.scenario == 'new' else 'open_dir_old']()
-                    tab = scope['all_signals' if args.scenario == 'new' else 'all_signals_old']
+                    getattr(controller, 'open_dir' if args.scenario == 'new' else 'open_dir_old')()
+                    tab = getattr(controller.state, args.scenario).signals
                     assert not tab.empty
                     result['shape'] = list(tab.shape)
                 result['passed'] = not result['exceptions']
