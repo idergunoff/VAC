@@ -16,7 +16,18 @@ def connect(path):
 @contextmanager
 def transaction(db):
     if db.in_transaction:
-        raise RuntimeError('Nested archive transaction')
+        # A service aggregate can compose the existing atomic repository calls.
+        from uuid import uuid4
+        name = 'aggregate_' + uuid4().hex
+        db.execute('SAVEPOINT ' + name)
+        try:
+            yield
+            db.execute('RELEASE SAVEPOINT ' + name)
+        except BaseException:
+            db.execute('ROLLBACK TO SAVEPOINT ' + name)
+            db.execute('RELEASE SAVEPOINT ' + name)
+            raise
+        return
     db.execute('BEGIN IMMEDIATE')
     try:
         yield

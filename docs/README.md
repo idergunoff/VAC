@@ -17,3 +17,5 @@
 - [Этап 6: требования, измерения и SQLite](stage-6/README.md)
 
 - [Этап 7: схема SQLite и репозитории](stage-7/README.md)
+
+- [Этап 8: импорт и подключение архива к GUI](stage-8/README.md)

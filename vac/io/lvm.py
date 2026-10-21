@@ -1,5 +1,7 @@
 """LVM reader. Directory traversal retains os.walk order and reverse file order."""
 import os
+from io import BytesIO
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from ..domain.models import MeasurementSet
@@ -14,7 +16,7 @@ def read_lvm(path):
     return signal
 
 
-def load_directory(directory, mean):
+def load_directory(directory, mean, source_records=None):
     measurements = MeasurementSet('new')
     signals, statistics = measurements.signals, measurements.statistics
     files = []
@@ -23,7 +25,13 @@ def load_directory(directory, mean):
         for name in sorted(names, reverse=True):
             if name.endswith('_5150m_c.lvm'):
                 files.append(name)
-                signal = read_lvm(os.path.join(root, name))
+                path = Path(root) / name
+                if source_records is None:
+                    signal = read_lvm(path)
+                else:
+                    content = path.read_bytes()
+                    signal = read_lvm(BytesIO(content))
+                    source_records.append((path.relative_to(directory).as_posix(), content))
                 signals['depth'] = signal[1]
                 if n == 9:
                     signals['noise'] = np.abs(signal[2])

@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 from vac.storage import Archive, Source, Signal, InputChannel, Study, Run, Interpretation, Correction, Interval
 from vac.storage import codec
 from vac.storage.session import migrate
+from vac.storage.session import connect
 from vac.io import lvm, twf
 
 
@@ -51,11 +52,11 @@ class ArchiveTests(unittest.TestCase):
 
     def test_empty_migration_repeat_checksum_and_unknown_version(self):
         migrate(self.db._db)
-        self.assertEqual(self.db._db.execute('SELECT count(*) FROM schema_migration').fetchone()[0], 1)
+        self.assertEqual(self.db._db.execute('SELECT count(*) FROM schema_migration').fetchone()[0], 2)
         self.db._db.execute("UPDATE schema_migration SET sha256='bad'")
         with self.assertRaises(ValueError):
             migrate(self.db._db)
-        self.db._db.execute("UPDATE schema_migration SET version='999_future.sql'")
+        self.db._db.execute("UPDATE schema_migration SET version='999_future.sql' WHERE version='001_initial.sql'")
         with self.assertRaises(ValueError):
             migrate(self.db._db)
 
@@ -70,6 +71,23 @@ class ArchiveTests(unittest.TestCase):
                 migrate(raw)
         self.assertEqual(raw.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall(), [])
         raw.close()
+
+    def test_upgrade_stage7_archive_preserves_existing_data(self):
+        folder = Path(self.tmp.name) / 'stage7-schema'
+        folder.mkdir()
+        (folder / '001_initial.sql').write_bytes((ROOT / 'vac/storage/migrations/001_initial.sql').read_bytes())
+        path = Path(self.tmp.name) / 'stage7.sqlite'
+        raw = connect(path)
+        with patch('vac.storage.session.files') as resource:
+            resource.return_value.joinpath.return_value = folder
+            migrate(raw)
+        raw.execute("INSERT INTO well VALUES('existing','Старая скважина','{}')")
+        raw.close()
+        with Archive(path) as upgraded:
+            self.assertEqual(upgraded.find_wells()[0]['id'], 'existing')
+            self.assertEqual(upgraded._db.execute('SELECT count(*) FROM schema_migration').fetchone()[0], 2)
+            study = upgraded.save_study('existing', sample())
+            self.assertEqual(upgraded.open_study(study).sources, sample().sources)
 
     def test_roundtrip_duplicates_owned_arrays_and_reopen(self):
         study = self.db.save_study(self.well, sample())
