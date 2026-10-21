@@ -30,6 +30,8 @@ class Controller:
         self.bind_signals()
         from .gui.archive import ArchiveMenu
         self.archive_menu = ArchiveMenu(self)
+        from .gui.workspace import WorkspaceActions
+        self.workspace_actions = WorkspaceActions(self)
 
     def read_display_values(self, names):
         """Snapshot scalar display settings; widgets never enter rendering modules."""
@@ -49,6 +51,8 @@ class Controller:
         self.ui.label_int_undefine.setText('Интервалы неопр. цемента:')
         self.ui.name_cement.setText('измерение цементограммы')
         self.ui.graphicsView.clear()
+        if hasattr(self, 'workspace_actions'):
+            self.workspace_actions.reset()
 
     def invalidate(self, equipment):
         self.state.invalidate(equipment)
@@ -72,6 +76,8 @@ class Controller:
         self.state.interpretation.options = None
         self.state.interpretation.frequency = ''
         self.state.interpretation.damping = None
+        if hasattr(self, 'workspace_actions'):
+            self.workspace_actions.reset()
 
     def record_correction(self, operation):
         interpretation = self.state.interpretation
@@ -215,7 +221,7 @@ class Controller:
 
         self.ui.checkBox_corr_mode.stateChanged.connect(self.draw_cement)
         self.ui.pushButton_from_temp.clicked.connect(self.cement_temp)
-        self.ui.pushButton_save_cement.clicked.connect(self.save_cement)
+        self.ui.pushButton_save_cement.clicked.connect(self.export_report)
         self.ui.pushButton_open_options.clicked.connect(self.open_options)
 
         self.ui.pushButton_all_cement.clicked.connect(self.all_cement)
@@ -583,6 +589,8 @@ class Controller:
 
 
     def choice_signal(self):
+        if hasattr(self, 'workspace_actions'):
+            self.workspace_actions.refresh_tooltips()
         plotting.choice_signal(self.state, self.read_display_values((
             'checkBox_diff_res_pdf_new.checkState',
             'checkBox_diff_res_pdf_old.checkState',
@@ -990,6 +998,13 @@ class Controller:
 
     def calc_int_cement(self):
         """ Выбор сигнала для цементограммы """
+        selected = [item for group in (self.ui.new_device, self.ui.old_device)
+                    for item in group.findChildren(QCheckBox) if item.isChecked()]
+        if len(selected) != 1:
+            self.ui.label_info.setText('Для преобразования выберите ровно один сигнал в разделе «Данные».')
+            self.ui.workspace.select(0)
+            self.ui.sidebarToggle.setChecked(True)
+            return
         self.clear_interpretation()
         self.ui.doubleSpinBox_defect1.setEnabled(False)
         self.ui.doubleSpinBox_defect2.setEnabled(False)
@@ -1100,11 +1115,14 @@ class Controller:
             'doubleSpinBox_x2_line.value',
             'doubleSpinBox_y_line.value',
         )), self.ui.graphicsView)
+        if hasattr(self, 'workspace_actions'):
+            self.workspace_actions.refresh(show_cement=True)
 
 
     def corr_sig(self):
         if self.state.interpretation.table is None:
             return
+        self.workspace_actions.checkpoint()
         """ Функция вытягивания кривой цементограммы - по максимуму """
         self.state.interpretation.table = corrections.corr_sig(
             self.state.interpretation.table, self.ui.doubleSpinBox_x1_line.value(),
@@ -1117,6 +1135,7 @@ class Controller:
     def corr_sig_bottom(self):
         if self.state.interpretation.table is None:
             return
+        self.workspace_actions.checkpoint()
         """ Функция вытягивания кривой цементограммы - по минимуму """
         self.state.interpretation.table = corrections.corr_sig_bottom(
             self.state.interpretation.table, self.ui.doubleSpinBox_x1_line.value(),
@@ -1129,6 +1148,7 @@ class Controller:
     def fix_corr(self):
         if self.state.interpretation.table is None:
             return
+        self.workspace_actions.checkpoint()
         """ зафиксировать изменения цементограммы для последующей коррекции """
         self.state.interpretation.table = corrections.fix_corr(self.state.interpretation.table)
         self.draw_cement()
@@ -1138,6 +1158,7 @@ class Controller:
     def plus_func(self):
         if self.state.interpretation.table is None:
             return
+        self.workspace_actions.checkpoint()
         """ Сложение цементограммы с функцией затухания - поднимает начало сигнала """
         self.state.interpretation.table = corrections.plus_func(self.state.interpretation.table)
         self.draw_cement()
@@ -1147,6 +1168,7 @@ class Controller:
     def add_undefine(self):
         if self.state.interpretation.table is None:
             return
+        self.workspace_actions.checkpoint()
         """ добавить интервал цемента вручную """
         min_cem = self.ui.doubleSpinBox_undefine_min.value()
         max_cem = self.ui.doubleSpinBox_undefine_max.value()
@@ -1169,7 +1191,7 @@ class Controller:
         self.record_correction('add_undefine')
 
 
-    def cementogramma(self):
+    def cementogramma(self, *, show=True):
         if self.state.interpretation.table is None:
             return
         """ построение цеметограммы в Matplotlib """
@@ -1179,7 +1201,7 @@ class Controller:
         defect2 = self.ui.doubleSpinBox_defect2.value()
         self.state.interpretation.table['quality'] = self.calc_defect(self.state.interpretation.table['corr_sig'], defect1, defect2, self.state.interpretation.intervals)
 
-        figures.cementogramma(self.state.interpretation.table, min_cement, max_cement, defect1, defect2, self.ui.name_cement.text())
+        figures.cementogramma(self.state.interpretation.table, min_cement, max_cement, defect1, defect2, self.ui.name_cement.text(), show=show)
 
         exports.write_table(self.state.interpretation.table, 'result_cement.txt', sep='\t')
 
@@ -1247,6 +1269,13 @@ class Controller:
         self.ui.lineEdit_client.setText(table.rows[2].cells[0].paragraphs[0].runs[1].text)
         self.ui.lineEdit_client2.setText(table.rows[3].cells[0].paragraphs[0].text)
         self.ui.lineEdit_interpreter.setText(table.rows[9].cells[2].paragraphs[0].text)
+
+
+    def export_report(self):
+        if self.state.interpretation.table is None:
+            return
+        self.cementogramma(show=False)
+        self.save_cement()
 
 
     def save_cement(self):
