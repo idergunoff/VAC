@@ -1,0 +1,281 @@
+{
+  "python": "3.12.14",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "numpy": "1.26.4",
+  "sqlite": "3.53.1",
+  "timing": "median of 7 warm reads; one write incl. commit; no cold-cache claim",
+  "datasets": {
+    "new": {
+      "files": [
+        {
+          "path": "пример/новое оборудование/10070/10070_2500G_3T_1108V_54mV_5150m_c.lvm",
+          "bytes": 108317,
+          "sha256": "6f178aee3fcbfc92554628b24e3b53930c0095db6067f931ccdb726c2e475ae4",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070/10070_2500G_5T_1125V_54mV_5150m_c.lvm",
+          "bytes": 108285,
+          "sha256": "e08162ce38bda3c601f7417808c009e477d8dbe6725d48060c93bea08fefda7a",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070/10070_5000G_3T_609V_53mV_5150m_c.lvm",
+          "bytes": 108277,
+          "sha256": "47c3a3e4d1e7ae0d23bfb9c4a9f589115d10dfe37b9bb3211f8bcd079e2d47e1",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070/10070_5000G_5T_612V_55mV_5150m_c.lvm",
+          "bytes": 108246,
+          "sha256": "85649c01f67662a7cc185ab56ae8d7d72a3d6a7a00e08bb89acf8085dd559bf5",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070-cm1/10070-cm1_2500G_3T_1091V_56mV_5150m_c.lvm",
+          "bytes": 108303,
+          "sha256": "679c0265e4e8d4526feb115347e68246241ccbbcb0d4858003143771be3dbb1e",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070-cm1/10070-cm1_2500G_5T_1112V_57mV_5150m_c.lvm",
+          "bytes": 108290,
+          "sha256": "425aab9a17d76cd921780b81f06f74b42441c3bf002764e32e7b8668ddcbe945",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070-cm1/10070-cm1_5000G_3T_606V_56mV_5150m_c.lvm",
+          "bytes": 108268,
+          "sha256": "b92778443dabe2def649e028a9fc9e5442236ab6c5e4fbe3845a42c1a0bab484",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070-cm1/10070-cm1_5000G_5T_610V_55mV_5150m_c.lvm",
+          "bytes": 108257,
+          "sha256": "a9366e2dc3f7436b8a8c86bbe17b83ee31be5181094acc42c470e6973f255401",
+          "raw_samples": 3425
+        },
+        {
+          "path": "пример/новое оборудование/10070-shum/10070-shum_5000G_5T_44V_41mV_5150m_c.lvm",
+          "bytes": 107729,
+          "sha256": "f20af4329c4723132acb40950bb782cb2bde3f954dd8812dc1b73498bda69c1c",
+          "raw_samples": 3425
+        }
+      ],
+      "channel_order": [
+        "10070_5000G_5T_612V_55mV_5150m_c.lvm",
+        "10070_5000G_3T_609V_53mV_5150m_c.lvm",
+        "10070_2500G_5T_1125V_54mV_5150m_c.lvm",
+        "10070_2500G_3T_1108V_54mV_5150m_c.lvm",
+        "10070-cm1_5000G_5T_610V_55mV_5150m_c.lvm",
+        "10070-cm1_5000G_3T_606V_56mV_5150m_c.lvm",
+        "10070-cm1_2500G_5T_1112V_57mV_5150m_c.lvm",
+        "10070-cm1_2500G_3T_1091V_56mV_5150m_c.lvm",
+        "10070-shum_5000G_5T_44V_41mV_5150m_c.lvm"
+      ],
+      "channels_including_noise": 9,
+      "loaded_samples_per_channel": 3425,
+      "raw_source_bytes": 973972,
+      "load_with_legacy_preprocessing_ms": 31.991,
+      "original_table_bytes": 274132,
+      "baseline_numeric_bytes_by_stage": {
+        "01-load": 3260600,
+        "02-select": 3370168,
+        "03-interval": 3337336,
+        "04-mean-norm": 3337336,
+        "05-sum": 3666136,
+        "06-quality": 3666136,
+        "07-cement-source": 3723688,
+        "08-correction": 3723688,
+        "09-cementogram": 3896600,
+        "10-save": 3896600,
+        "11-restore": 3915784,
+        "12-reload": 3510248
+      },
+      "interval_bounds": [
+        89.96734699999999,
+        109.960091
+      ],
+      "storage": {
+        "rows": {
+          "bytes": 1974272,
+          "write_ms": 64.056,
+          "full_read_ms": 19.45,
+          "interval_read_ms": 2.038,
+          "exact_roundtrip": true
+        },
+        "whole_blob": {
+          "bytes": 532480,
+          "write_ms": 0.951,
+          "full_read_ms": 0.63,
+          "interval_read_ms": 0.992,
+          "exact_roundtrip": true
+        },
+        "blocks_1024": {
+          "bytes": 548864,
+          "write_ms": 1.323,
+          "full_read_ms": 1.789,
+          "interval_read_ms": 0.595,
+          "exact_roundtrip": true
+        },
+        "external_npy": {
+          "bytes": 527120,
+          "write_ms": 0.549,
+          "full_read_ms": 0.568,
+          "interval_read_ms": 1.184,
+          "exact_roundtrip": true
+        }
+      }
+    },
+    "old": {
+      "files": [
+        {
+          "path": "пример/старое оборудование/T_14_01.TWF",
+          "bytes": 1678,
+          "sha256": "f29c47fbb631a8a2b712e995baab6a56a435800d98914c51694b9b8dee836aad",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_03.TWF",
+          "bytes": 1678,
+          "sha256": "231488402e797076df701a06950ffa9ad216fe849f182791f70cf7bb60f3e228",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_04.TWF",
+          "bytes": 1678,
+          "sha256": "88679d41bccba12d90060a37dc866769b986d4fe3859fe194dd0359ed6dbc82e",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_05.TWF",
+          "bytes": 1678,
+          "sha256": "ad74fa1a148b6cdc0507add3e366e272143921ae85a8850df13c03cc83b58b9d",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_06.TWF",
+          "bytes": 1678,
+          "sha256": "0fd5a1604ad0a758b6bb71e0efa01ab16a13422d5025b4eec42b35913733b7f4",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_21.TWF",
+          "bytes": 1678,
+          "sha256": "3ee9a0c6fd2661d43caa756437e15eb5252a9a71f121579b39a17f071fb5b1ed",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_22.TWF",
+          "bytes": 1678,
+          "sha256": "f84d0d12df4554ee5b8e77a29c037548c51e1818619e61952ae1b7fe1edc7c5e",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_23.TWF",
+          "bytes": 1678,
+          "sha256": "d063733173bd87b854731ce9367b0f013aa04dbf939b06ee6c397c1f7742762c",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_24.TWF",
+          "bytes": 1678,
+          "sha256": "3ba34c2916052fe78cf9ea9ccbeb982025379cc9cf6fe14f1896b1fe1e04ee73",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_38.TWF",
+          "bytes": 1678,
+          "sha256": "524e253d0fa9a9e00074bf1d5d43769cfc668b82b4df7798cd102bc2883c56bb",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_39.TWF",
+          "bytes": 1678,
+          "sha256": "8d3043ab6c172570705805e425268f59df17539c7957c64a9d4c292ccc4d1eec",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_40.TWF",
+          "bytes": 1678,
+          "sha256": "60539a1f25f6025b476a419fa6cb5f103cd8d1a710ef3cc1bf6c1cc1377618e4",
+          "raw_samples": 387
+        },
+        {
+          "path": "пример/старое оборудование/T_14_41.TWF",
+          "bytes": 1678,
+          "sha256": "94a067768dd511befe35956829d00ebc3160cf4e6d03eacf64e1c2a44c3700f3",
+          "raw_samples": 387
+        }
+      ],
+      "channel_order": [
+        "T_14_01.TWF",
+        "T_14_03.TWF",
+        "T_14_04.TWF",
+        "T_14_05.TWF",
+        "T_14_06.TWF",
+        "T_14_21.TWF",
+        "T_14_22.TWF",
+        "T_14_23.TWF",
+        "T_14_24.TWF",
+        "T_14_38.TWF",
+        "T_14_39.TWF",
+        "T_14_40.TWF",
+        "T_14_41.TWF"
+      ],
+      "channels_including_noise": 13,
+      "loaded_samples_per_channel": 3414,
+      "raw_source_bytes": 21814,
+      "load_with_legacy_preprocessing_ms": 6.905,
+      "original_table_bytes": 382500,
+      "baseline_numeric_bytes_by_stage": {
+        "01-load": 4451856,
+        "02-select": 4561072,
+        "03-interval": 4528592,
+        "04-mean-norm": 4528592,
+        "05-sum": 4856336,
+        "06-quality": 4856336,
+        "07-cement-source": 4913888,
+        "08-correction": 4913888,
+        "09-cementogram": 5086800,
+        "10-save": 5086800,
+        "11-restore": 5105984,
+        "12-reload": 4701504
+      },
+      "interval_bounds": [
+        89.6782815,
+        109.6067885
+      ],
+      "storage": {
+        "rows": {
+          "bytes": 2879488,
+          "write_ms": 126.498,
+          "full_read_ms": 25.042,
+          "interval_read_ms": 2.589,
+          "exact_roundtrip": true
+        },
+        "whole_blob": {
+          "bytes": 753664,
+          "write_ms": 0.869,
+          "full_read_ms": 0.614,
+          "interval_read_ms": 1.039,
+          "exact_roundtrip": true
+        },
+        "blocks_1024": {
+          "bytes": 778240,
+          "write_ms": 1.155,
+          "full_read_ms": 1.68,
+          "interval_read_ms": 0.81,
+          "exact_roundtrip": true
+        },
+        "external_npy": {
+          "bytes": 744544,
+          "write_ms": 0.732,
+          "full_read_ms": 0.746,
+          "interval_read_ms": 1.004,
+          "exact_roundtrip": true
+        }
+      }
+    }
+  }
+}
