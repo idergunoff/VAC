@@ -28,6 +28,8 @@ class Controller:
         self.state = state if state is not None else ApplicationState()
         self.ui.dateEdit.setDate(datetime.datetime.today() - datetime.timedelta(days=1))
         self.bind_signals()
+        from .gui.archive import ArchiveMenu
+        self.archive_menu = ArchiveMenu(self)
 
     def read_display_values(self, names):
         """Snapshot scalar display settings; widgets never enter rendering modules."""
@@ -53,6 +55,7 @@ class Controller:
         self.clear_interpretation()
 
     def begin_load(self, equipment):
+        self.archive_menu.study_id = None
         self.state.reset_measurements(equipment)
         self.clear_interpretation()
         group = self.ui.new_device if equipment == 'new' else self.ui.old_device
@@ -428,6 +431,7 @@ class Controller:
     def calc_to_int(self):
         if self.state.new.signals.empty:
             return
+        self.archive_menu.run_id = None
         """ Функция пересчета исходного сигнала, расчет цементограмм """
 
 
@@ -463,6 +467,7 @@ class Controller:
     def calc_to_int_old(self):
         if self.state.old.signals.empty:
             return
+        self.archive_menu.run_id = None
         """ Функция пересчета исходного сигнала, расчет цементограмм для старого оборудования"""
 
 

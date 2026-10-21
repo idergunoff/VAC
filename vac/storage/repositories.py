@@ -267,6 +267,61 @@ class Archive:
     def list_reports(self, interpretation_id):
         return [r[0] for r in self._db.execute('SELECT id FROM report WHERE interpretation_id=? ORDER BY created_at,id', (interpretation_id,))]
 
+    def save_gui_version(self, study_id, run, metadata, arrays, automatic, final, corrections):
+        """One commit for run, automatic/manual interpretation and complete GUI snapshot."""
+        with transaction(self._db):
+            identity = self.save_run(study_id, run)
+            interpretation_id = None
+            if final:
+                classes = ['good', 'partial', 'absent', 'undefined']
+                interpretation_id = self.save_interpretation(identity, Interpretation(
+                    'legacy-quality-0-3', classes, automatic or final))
+                if corrections or automatic:
+                    signal_id = self.open_run(identity)['signals'][0]['id']
+                    edits = [Correction(signal_id, operation, parameters) for operation, parameters in corrections]
+                    intervals = []
+                    if 'quality' in final:
+                        quality, depth = final['quality'], final['depth']
+                        starts = np.r_[0, np.flatnonzero(quality[1:] != quality[:-1]) + 1]
+                        ends = np.r_[starts[1:] - 1, len(quality) - 1]
+                        for start, end in zip(starts, ends):
+                            intervals.append(Interval(signal_id, float(depth[start]), float(depth[end]), classes[int(quality[start])]))
+                    interpretation_id = self.save_interpretation(identity, Interpretation(
+                        'legacy-quality-0-3', classes, final, interpretation_id, edits, intervals))
+            self._db.execute('INSERT INTO gui_snapshot VALUES(?,?,?,?)',
+                             (identity, 'gui-state-v1', _json(metadata), interpretation_id))
+            for name, array in arrays.items():
+                self._db.execute('INSERT INTO gui_snapshot_array VALUES(?,?,?)',
+                                 (identity, name, self._array(array)))
+        return identity
+
+    def open_gui_version(self, run_id):
+        row = dict(self._db.execute('SELECT * FROM gui_snapshot WHERE run_id=?', (run_id,)).fetchone() or {})
+        if row.get('schema') != 'gui-state-v1':
+            raise ValueError('Версия не содержит поддерживаемого снимка GUI')
+        arrays = {r['name']: self._read_array(r['array_id']) for r in self._db.execute(
+            'SELECT * FROM gui_snapshot_array WHERE run_id=?', (run_id,))}
+        return json.loads(row['metadata']), arrays, row['interpretation_id']
+
+    def save_legacy_attachment(self, study_id, name, content, fields, limitations):
+        if not content or len(content) > codec.MAX_BYTES:
+            raise ValueError('Empty or oversized legacy settings')
+        identity = _id()
+        with transaction(self._db):
+            self._db.execute('INSERT INTO legacy_attachment VALUES(?,?,?,?,?,?,?)',
+                (identity, study_id, name, codec.digest(content), content, _json(fields), _json(limitations)))
+        return identity
+
+    def list_legacy_attachments(self, study_id):
+        return [dict(r) | {'fields': json.loads(r['fields']), 'limitations': json.loads(r['limitations'])}
+                for r in self._db.execute('SELECT id,name,fields,limitations FROM legacy_attachment WHERE study_id=?', (study_id,))]
+
+    def open_legacy_attachment(self, identity):
+        row = self._row('legacy_attachment', identity)
+        if codec.digest(row['payload']) != row['sha256']:
+            raise ValueError('Corrupt legacy attachment')
+        return row | {'fields': json.loads(row['fields']), 'limitations': json.loads(row['limitations'])}
+
     def open_report(self, identity):
         row = self._row('report', identity)
         if codec.digest(row['payload']) != row['sha256']:

@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-21",
+  "base_commit": "70b9402cdd01794d80a2402bc155b32c07077dc7",
+  "base_tree": "d833e91f5a7d4ca1d3d84642ca714a5dbafa635b",
+  "environment": "Linux / Python 3.12 / pinned project dependencies / Qt offscreen / Matplotlib Agg",
+  "unit_tests": {"count": 11, "status": "PASS"},
+  "integration_tests": {"count": 17, "status": "PASS"},
+  "archive_cycles": {
+    "equipment": ["LVM", "TWF"],
+    "phase_A_comparison": "01-load signals: rtol=1e-12, atol=1e-12, equal_nan; fixtures unchanged",
+    "restored_tables": "exact equality of signals, statistics, automatic and corrected interpretation",
+    "manual_state": "correction sequence and intervals restored",
+    "restart": "fresh GUI window, fresh SQLite connections and separate Qt-free Python process",
+    "reports": "DOCX generated after restoration and exact exported bytes verified against archive",
+    "provenance": "report program change preserves original calculation algorithm; new calculation creates a separate run",
+    "failures": "injected mid-import and mid-snapshot failures rolled back; retry succeeded",
+    "duplicates": "reimport creates a separate study with explicit source matches",
+    "legacy_vac": "original bytes and present fields retained with explicit incompleteness"
+  },
+  "migration_001_to_002": "PASS; existing well preserved; study roundtrip succeeds",
+  "source_launchers": "PASS; inert imports, resources and all three launchers from foreign CWD",
+  "wheel": "PASS; built offline, archive modules and both migrations included; archive created from foreign CWD without Qt",
+  "syntax_and_whitespace": "PASS compileall and git diff --check",
+  "unverified": ["Windows", "real GUI and visual report acceptance", "production archive sizes", "backup and disaster recovery (stage 9)"]
+}

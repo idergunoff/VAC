@@ -1,11 +1,12 @@
 """Word template population, independent of Qt and controller state."""
 import docx
+from pathlib import Path
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from copy import deepcopy
 
 
-def build_report(table_data, frequency, values, template):
+def build_report(table_data, frequency, values, template, image_path='temp.png'):
     doc = docx.Document(template)
     table = doc.tables[0]
     table2 = doc.tables[1]
@@ -52,7 +53,7 @@ def build_report(table_data, frequency, values, template):
     interpreter.font.size = Pt(11)
     interpreter.font.name = 'Times New Roman'
     table.rows[6].cells[0]._element.clear_content()
-    table.rows[6].cells[0].add_paragraph().add_run().add_picture('temp.png')
+    table.rows[6].cells[0].add_paragraph().add_run().add_picture(str(image_path))
     table.rows[6].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     table.rows[7].cells[2].paragraphs[0].runs[5].text = frequency
     n_row = 1
@@ -173,7 +174,8 @@ def build_report(table_data, frequency, values, template):
         table._tbl.addnext(new_tbl)
         table3 = doc.tables[1]
         table3.rows[6].cells[0]._element.clear_content()
-        table3.rows[6].cells[0].add_paragraph().add_run().add_picture('temp1.png')
+        page = Path(image_path)
+        table3.rows[6].cells[0].add_paragraph().add_run().add_picture(str(page.with_name(page.stem + '1' + page.suffix)))
         table3.rows[6].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
         table3.rows[0].cells[3].paragraphs[0].runs[0].text = 'лист 2'
     if table_data['depth'].max() > 800:
@@ -181,7 +183,8 @@ def build_report(table_data, frequency, values, template):
         table3._tbl.addnext(new_tbl2)
         table4 = doc.tables[2]
         table4.rows[6].cells[0]._element.clear_content()
-        table4.rows[6].cells[0].add_paragraph().add_run().add_picture('temp2.png')
+        page = Path(image_path)
+        table4.rows[6].cells[0].add_paragraph().add_run().add_picture(str(page.with_name(page.stem + '2' + page.suffix)))
         table4.rows[6].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
         table4.rows[0].cells[3].paragraphs[0].runs[0].text = 'лист 3'
     return doc

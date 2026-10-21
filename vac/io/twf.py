@@ -1,6 +1,8 @@
 """TWF: 130-byte header, little-endian signed int32. No sorting is introduced."""
 import os
 import struct
+from io import BytesIO
+from pathlib import Path
 from dataclasses import dataclass
 from ..domain.models import MeasurementSet
 from ..processing.preprocessing import twf_depth, interpolate_twf
@@ -13,7 +15,7 @@ class TwfRecord:
 
 
 def read_twf_record(path):
-    with open(path, 'rb') as stream:
+    with (BytesIO(path) if isinstance(path, bytes) else open(path, 'rb')) as stream:
         header = stream.read(130)
         payload = stream.read()
     if len(header) != 130 or not payload or len(payload) % 4:
@@ -26,7 +28,7 @@ def read_twf(path):
     return read_twf_record(path).samples
 
 
-def load_directory(directory):
+def load_directory(directory, source_records=None):
     measurements = MeasurementSet('old')
     signals, statistics = measurements.signals, measurements.statistics
     files = []
@@ -34,7 +36,12 @@ def load_directory(directory):
     for name in os.listdir(directory):
         if name.endswith('.TWF'):
             files.append(name)
-            signal = read_twf(os.path.join(directory, name))
+            if source_records is None:
+                signal = read_twf(os.path.join(directory, name))
+            else:
+                content = (Path(directory) / name).read_bytes()
+                signal = read_twf(content)
+                source_records.append((name, content))
             maximum = len(signal) * 0.515
             if n == 1:
                 signals['depth'] = twf_depth(len(signal))

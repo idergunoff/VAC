@@ -420,7 +420,7 @@ def draw_graphics_old(state, values):
     fig.show()
 
 
-def cementogramma(table, min_cement, max_cement, defect1, defect2, title):
+def cementogramma(table, min_cement, max_cement, defect1, defect2, title, image_path='temp.png'):
     def draw_cement_int(ax, up):
         ax.axvline(x=defect1, linewidth=0.5, color='black', linestyle=':')
         ax.axvline(x=defect2, linewidth=0.5, color='black', linestyle=':')
@@ -458,7 +458,7 @@ def cementogramma(table, min_cement, max_cement, defect1, defect2, title):
     draw_cement_int(ax4, 300)
 
     fig.tight_layout()
-    exports.write_figure(fig, 'temp.png', dpi=200)
+    exports.write_figure(fig, image_path, dpi=200)
     fig.suptitle(title)
     fig.tight_layout()
     fig.show()
@@ -475,7 +475,9 @@ def cementogramma(table, min_cement, max_cement, defect1, defect2, title):
         draw_cement_int(ax4, 700)
 
         fig.tight_layout()
-        exports.write_figure(fig, 'temp1.png', dpi=200)
+        from pathlib import Path
+        page = Path(image_path)
+        exports.write_figure(fig, page.with_name(page.stem + '1' + page.suffix), dpi=200)
         fig.suptitle(title)
         fig.tight_layout()
         fig.show()
@@ -492,7 +494,9 @@ def cementogramma(table, min_cement, max_cement, defect1, defect2, title):
         draw_cement_int(ax4, 1100)
 
         fig.tight_layout()
-        exports.write_figure(fig, 'temp2.png', dpi=200)
+        from pathlib import Path
+        page = Path(image_path)
+        exports.write_figure(fig, page.with_name(page.stem + '2' + page.suffix), dpi=200)
         fig.suptitle(title)
         fig.tight_layout()
         fig.show()
