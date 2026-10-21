@@ -420,7 +420,7 @@ def draw_graphics_old(state, values):
     fig.show()
 
 
-def cementogramma(table, min_cement, max_cement, defect1, defect2, title, image_path='temp.png'):
+def cementogramma(table, min_cement, max_cement, defect1, defect2, title, image_path='temp.png', *, show=True):
     def draw_cement_int(ax, up):
         ax.axvline(x=defect1, linewidth=0.5, color='black', linestyle=':')
         ax.axvline(x=defect2, linewidth=0.5, color='black', linestyle=':')
@@ -461,7 +461,10 @@ def cementogramma(table, min_cement, max_cement, defect1, defect2, title, image_
     exports.write_figure(fig, image_path, dpi=200)
     fig.suptitle(title)
     fig.tight_layout()
-    fig.show()
+    if show:
+        fig.show()
+    else:
+        plt.close(fig)
 
     if table['depth'].max() > 400:
         fig = plt.figure(figsize=(6.3, 8.45))
@@ -480,7 +483,10 @@ def cementogramma(table, min_cement, max_cement, defect1, defect2, title, image_
         exports.write_figure(fig, page.with_name(page.stem + '1' + page.suffix), dpi=200)
         fig.suptitle(title)
         fig.tight_layout()
-        fig.show()
+        if show:
+            fig.show()
+        else:
+            plt.close(fig)
 
     if table['depth'].max() > 800:
         fig = plt.figure(figsize=(6.3, 8.45))
@@ -499,7 +505,10 @@ def cementogramma(table, min_cement, max_cement, defect1, defect2, title, image_
         exports.write_figure(fig, page.with_name(page.stem + '2' + page.suffix), dpi=200)
         fig.suptitle(title)
         fig.tight_layout()
-        fig.show()
+        if show:
+            fig.show()
+        else:
+            plt.close(fig)
 
 
 

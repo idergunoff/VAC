@@ -1,22 +1,43 @@
-import os,sys,importlib
-os.environ['QT_QPA_PLATFORM']='offscreen'
+"""Exercise compact workspace geometry and access to every equipment page."""
+import os
+import sys
 from pathlib import Path
+os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from PyQt5 import QtWidgets,QtCore
-app=QtWidgets.QApplication([])
-for module in ['VAC_dialog']:
- w=QtWidgets.QMainWindow();ui=importlib.import_module(module).Ui_MainWindow();ui.setupUi(w);w.show()
- for width,height in [(800,600),(1366,768),(1920,1080),(3200,2000)]:
-  w.resize(width,height);app.processEvents()
-  assert w.width()==width and w.height()==height,(w.size(),width,height)
-  assert ui.graphicsView.width()>width-40,(ui.graphicsView.size(),width)
-  for scroll in w.findChildren(QtWidgets.QScrollArea):
-   assert scroll.widget().width()>=scroll.widget().minimumSizeHint().width()
-  print(module,width,height,'plot',ui.graphicsView.width(),ui.graphicsView.height(),flush=True)
-  for tabs in w.findChildren(QtWidgets.QTabWidget):
-   for index in range(tabs.count()):
-    tabs.setCurrentIndex(index);app.processEvents()
-    page = tabs.currentWidget()
-    assert isinstance(page, QtWidgets.QTabWidget) or page.layout() is not None or not page.findChildren(QtWidgets.QWidget)
-  assert ui.responsiveSplitter.count() == 2
- w.close()
+from PyQt5 import QtWidgets, QtCore
+from VAC_dialog import Ui_MainWindow
+
+app = QtWidgets.QApplication([])
+window = QtWidgets.QMainWindow()
+ui = Ui_MainWindow()
+ui.setupUi(window)
+window.show()
+for width, height in [(800, 600), (1366, 768), (1920, 1080), (3200, 2000)]:
+    window.resize(width, height)
+    app.processEvents()
+    assert window.size().width() == width and window.size().height() == height
+    assert ui.responsiveSplitter.orientation() == QtCore.Qt.Horizontal
+    assert ui.graphicsView.width() > width * .45
+    assert ui.graphicsView.height() > height * .55
+    assert ui.horizontalLayoutWidget.isVisible()
+    assert ui.pushButton_int.isVisible()
+    assert ui.pushButton_save_cement.isVisible()
+    for section in range(ui.workspace.pages.count()):
+        ui.workspace.select(section)
+        app.processEvents()
+        scroll = ui.workspace.pages.currentWidget()
+        assert scroll.isVisible()
+        assert scroll.horizontalScrollBar().maximum() == 0, (width, section)
+    ui.workspace.select(0)
+    for index in range(ui.equipmentTabs.count()):
+        ui.equipmentTabs.setCurrentIndex(index)
+        app.processEvents()
+        assert ui.equipmentTabs.currentWidget().isVisible()
+    plot_width = ui.graphicsView.width()
+    ui.sidebarToggle.setChecked(False)
+    app.processEvents()
+    assert ui.graphicsView.width() > plot_width
+    ui.sidebarToggle.setChecked(True)
+    app.processEvents()
+    print(width, height, 'plot', ui.graphicsView.width(), ui.graphicsView.height(), flush=True)
+window.close()
