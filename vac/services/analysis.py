@@ -1,10 +1,15 @@
 """Headless analysis. Own the working copy; never write files or initialize Qt."""
+import logging
+
 from copy import deepcopy
 from dataclasses import dataclass, replace
 
 from ..calculation import calculate_new, calculate_old
 from ..domain.models import MeasurementSet, ProcessingParameters, ProcessingResult
 from ..processing import preprocessing, interpretation
+
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,6 +26,7 @@ def analyze(source: MeasurementSet, parameters: ProcessingParameters, *, automat
     automatic_window reproduces calc_to_int; False uses the supplied mean window.
     Physical axis units and legacy threshold semantics are intentionally unchanged.
     """
+    log.info('analysis_started equipment=%s automatic_window=%s', source.equipment, automatic_window)
     measurements = deepcopy(source)
     window = preprocessing.prepare_interval(measurements, parameters.interval_min, parameters.interval_max)
     if automatic_window:
@@ -36,7 +42,9 @@ def analyze(source: MeasurementSet, parameters: ProcessingParameters, *, automat
     # the full pass. Retain its column insertion order for compatible tables.
     change_mean = preprocessing.change_mean_win if measurements.equipment == 'new' else preprocessing.change_mean_win_old
     change_mean(measurements, parameters)
+    log.info('analysis_calculation_started equipment=%s', measurements.equipment)
     calculate(measurements, parameters, progress)
+    log.info('analysis_classification_started equipment=%s', measurements.equipment)
     channels = [channel.number for channel in measurements.channels]
     errors = []
     thresholds = interpretation.individual_thresholds(
@@ -46,4 +54,5 @@ def analyze(source: MeasurementSet, parameters: ProcessingParameters, *, automat
                                      measurements.interval_max, *thresholds, absolute, errors)
     interpretation.match_defect(measurements.signals, [c for c in channels if c < limit])
     measurements.result = ProcessingResult(parameters, measurements.revision)
+    log.info('analysis_complete equipment=%s classification_errors=%d', measurements.equipment, len(errors))
     return AnalysisResult(measurements, thresholds, errors)

@@ -25,6 +25,7 @@ from vac.app import create_window
 from vac.services import archive as service
 from vac.gui.archive import capture_widgets, blocked
 from vac.storage import Archive
+from vac.storage.backup import backup, restore
 
 
 @contextmanager
@@ -110,6 +111,10 @@ class ArchiveGuiTests(unittest.TestCase):
                     'assert state.interpretation.table is not None; assert identity; '
                     'assert "PyQt5" not in sys.modules; db.close()', str(self.path), run_id],
                     env=dict(os.environ, PYTHONPATH=str(ROOT)), check=True, timeout=30)
+                recovery = Path(self.tmp.name) / ('backup-' + equipment + '.sqlite')
+                backup(self.path, recovery)
+                self.path = Path(self.tmp.name) / ('clean-' + equipment) / 'archive.sqlite'
+                restore(recovery, self.path)
                 before = copy.deepcopy(self.c.state)
                 saved_widgets = capture_widgets(self.c.ui)
                 self.window.close()
@@ -139,6 +144,12 @@ class ArchiveGuiTests(unittest.TestCase):
                     old = db.open_gui_version(run_id)
                     self.assertIsNotNone(old[2])
                     self.assertEqual(len(db.list_runs(report.study_id)), 2)
+                report_copy = Path(self.tmp.name) / ('report-backup-' + equipment + '.sqlite')
+                backup(self.path, report_copy)
+                recovered_report = Path(self.tmp.name) / ('report-restored-' + equipment + '.sqlite')
+                restore(report_copy, recovered_report)
+                with Archive(recovered_report) as recovered:
+                    self.assertEqual(recovered.open_report(report_id)['payload'], target.read_bytes())
                 menu.recalculate()
                 self.assertIsNone(self.c.state.interpretation.table)
                 second_id = menu.save_current()

@@ -1,4 +1,8 @@
 """First calculation boundary: explicit state and parameter snapshots, no Qt."""
+import logging
+
+log = logging.getLogger(__name__)
+
 import numpy as np
 from scipy.optimize import curve_fit
 from .domain.models import ProcessingParameters
@@ -21,6 +25,7 @@ def calc_max_int(tab1, tab2, i, maximum):
 
 
 def calculate_new(measurements, parameters, progress=lambda value: None):
+    log.info('calculation_started equipment=new')
     signals, statistics = measurements.signals, measurements.statistics
     interval_min, interval_max = measurements.interval_min, measurements.interval_max
     coeff_norm = parameters.normalization
@@ -75,8 +80,10 @@ def calculate_new(measurements, parameters, progress=lambda value: None):
                 progress(i)
 
     measurements.interval_max = interval_max
+    log.info('calculation_complete equipment=%s', measurements.equipment)
 
 def calculate_old(measurements, parameters, progress=lambda value: None):
+    log.info('calculation_started equipment=old')
     signals, statistics = measurements.signals, measurements.statistics
     interval_min, interval_max = measurements.interval_min, measurements.interval_max
     coeff_norm = parameters.normalization
@@ -132,6 +139,7 @@ def calculate_old(measurements, parameters, progress=lambda value: None):
                 progress(i)
     # расчет рекомендуемого окна усреднения по формуле из Щелкуна, установка значения в спинбок
     measurements.interval_max = interval_max
+    log.info('calculation_complete equipment=%s', measurements.equipment)
 
 class ClassificationError(ValueError):
     def __init__(self, quality):

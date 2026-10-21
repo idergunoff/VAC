@@ -3,6 +3,9 @@ from contextlib import contextmanager
 from hashlib import sha256
 from importlib.resources import files
 import sqlite3
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def connect(path):
@@ -55,6 +58,7 @@ def migrate(db):
                 if known[path.name] != digest:
                     raise ValueError('Migration checksum mismatch: ' + path.name)
                 continue
+            log.info('archive_migration_started version=%s sha256=%s', path.name, digest)
             statement = ''
             for line in data.decode('utf-8').splitlines(keepends=True):
                 statement += line
@@ -64,3 +68,5 @@ def migrate(db):
             if statement.strip():
                 raise ValueError('Incomplete migration')
             db.execute("INSERT INTO schema_migration VALUES(?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now'))", (path.name, digest))
+
+    log.info('archive_schema_ready migrations=%d sqlite=%s', len(available), sqlite3.sqlite_version)
