@@ -166,7 +166,7 @@ class ArchiveTests(unittest.TestCase):
         version = Interpretation('legacy-class-1', ['good', 'absent'], {'cement': np.array([0., 0., 1.])}, base,
                                  [correction], [Interval(signal, 0., 1., 'absent')])
         manual = self.db.save_interpretation(run, version)
-        report_bytes = (ROOT / 'tests/baselines/stage-1/new/report.docx').read_bytes()
+        report_bytes = (ROOT / 'vac/resources/template.docx').read_bytes()
         report = self.db.save_report(manual, report_bytes, details={'скважина': '7'}, template_version='1', template_hash=hashlib.sha256((ROOT / 'vac/resources/template.docx').read_bytes()).hexdigest())
         before = self.counts()
         broken = copy.deepcopy(version)

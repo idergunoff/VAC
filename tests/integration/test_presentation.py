@@ -24,7 +24,7 @@ from vac import reference
 class PresentationTests(unittest.TestCase):
     def test_legacy_settings_exact_fields_and_pickle_bytes(self):
         for equipment in ('new', 'old'):
-            path = ROOT / 'tests/baselines/stage-1' / equipment / 'settings.vac'
+            path = ROOT / 'tests/fixtures/current' / equipment / 'settings.vac'
             expected = pickle.loads(path.read_bytes())  # repository-owned trusted fixture
             actual = legacy_options.load_trusted(path)
             self.assertEqual(actual, expected)
