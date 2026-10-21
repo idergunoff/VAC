@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-20",
+  "base_commit": "56b49c8e3eb052328fbf7c7df80b8889385c0384",
+  "base_tree": "7c27332c1c0a77b47a5a4c2a8e1afa0243e0e70e",
+  "base_verification": "GitHub connector; all changed blobs and complete tree checked; exact signed commit reconstructed; shallow base",
+  "checks": {
+    "benchmark_first": "PASS: 2 datasets x 4 formats; full arrays and inclusive interval exact; SQLite integrity_check",
+    "benchmark_repeat": "PASS: exact roundtrip, source hashes, file order, sample counts and storage sizes repeated",
+    "unit": "PASS: unittest discover -s tests/unit -v; 11 tests",
+    "diff_check": "PASS"
+  },
+  "limitations": [
+    "Windows not tested",
+    "warm cache only; small supplied examples",
+    "no PostgreSQL performance claim",
+    "production storage and backup not implemented at stage 6",
+    "local single-user mode and archive volume unconfirmed"
+  ],
+  "runtime_changes": false
+}
