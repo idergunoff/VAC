@@ -40,6 +40,11 @@ for width, height in [(800, 600), (1366, 768), (1920, 1080), (3200, 2000)]:
         for _ in range(3):
             app.processEvents()
         assert ui.equipmentTabs.currentWidget().horizontalScrollBar().maximum() == 0
+    ui.workspace.select(2)
+    app.processEvents()
+    assert ui.pushButton_cement_func.isVisible()
+    assert ui.pushButton_cement_func.width() >= ui.pushButton_cement_func.sizeHint().width()
+    ui.workspace.select(0)
     ui.workspace.pages.buttons[0].click()
     app.processEvents()
     assert ui.workspace.pages.currentIndex() == -1

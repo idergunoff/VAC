@@ -209,6 +209,7 @@ class Controller:
         self.ui.checkBox_sum3_old.stateChanged.connect(self.choice_signal)
 
         self.ui.pushButton_int_cement.clicked.connect(self.calc_int_cement)
+        self.ui.pushButton_cement_func.clicked.connect(self.cement_from_function)
         self.ui.doubleSpinBox_defect1.valueChanged.connect(self.check_int_defect)
         self.ui.doubleSpinBox_defect2.valueChanged.connect(self.check_int_defect)
         self.ui.pushButton_minmax_cem.clicked.connect(self.calc_maxmin_cem)
@@ -1010,6 +1011,13 @@ class Controller:
 
     def calc_int_cement(self):
         """ Выбор сигнала для цементограммы """
+        self._cement_from_selected('diff_result')
+
+    def cement_from_function(self):
+        """Use the legacy function-relative curve for the selected channel or sum."""
+        self._cement_from_selected('rel_ampl')
+
+    def _cement_from_selected(self, source):
         selected = [item for group in (self.ui.new_device, self.ui.old_device)
                     for item in group.findChildren(QCheckBox) if item.isChecked()]
         if len(selected) != 1:
@@ -1017,26 +1025,29 @@ class Controller:
             self.ui.workspace.select(0)
             self.ui.sidebarToggle.setChecked(True)
             return
+        item = selected[0]
+        equipment = 'new' if self.ui.new_device.isAncestorOf(item) else 'old'
+        measurements = getattr(self.state, equipment)
+        number = int(item.text()[0:2])
+        required = ('depth', str(number) + '_' + source, str(number) + '_func')
+        if any(column not in measurements.signals for column in required):
+            self.ui.label_info.setText('Сначала загрузите и рассчитайте выбранный сигнал.')
+            return
+        maximum = self.calc_max_int(measurements.signals, measurements.statistics, number) if equipment == 'new' else measurements.interval_max
+        table = interpretation.prepare_cement(measurements, number, maximum, source=source)
+        if table.empty:
+            self.ui.label_info.setText('В выбранном интервале нет данных для цементограммы.')
+            return
         self.clear_interpretation()
         self.ui.doubleSpinBox_defect1.setEnabled(False)
         self.ui.doubleSpinBox_defect2.setEnabled(False)
         self.ui.doubleSpinBox_min_cement.setEnabled(False)
         self.ui.doubleSpinBox_max_cement.setEnabled(False)
-        self.ui.name_cement.setText('измерение цементограммы')
-        selected_new = [item for item in self.ui.new_device.findChildren(QCheckBox) if item.checkState() == 2]
-        selected_old = [item for item in self.ui.old_device.findChildren(QCheckBox) if item.checkState() == 2]
-        equipment = 'new' if selected_new else 'old'
-        measurements = getattr(self.state, equipment)
-        for item in selected_new or selected_old:
-            number = int(item.text()[0:2])
-            maximum = self.calc_max_int(measurements.signals, measurements.statistics, number) if equipment == 'new' else measurements.interval_max
-            self.state.interpretation.table = interpretation.prepare_cement(measurements, number, maximum)
-            self.ui.name_cement.setText(item.text())
-            self.bind_interpretation(equipment, item.text())
-            self.state.interpretation.damping = measurements.statistics['k_damp'][number]
-            self.state.interpretation.frequency = interpretation.frequency(equipment, number)
-        if self.state.interpretation.table is None:
-            return
+        self.state.interpretation.table = table
+        self.ui.name_cement.setText(item.text())
+        self.bind_interpretation(equipment, item.text())
+        self.state.interpretation.damping = measurements.statistics['k_damp'][number]
+        self.state.interpretation.frequency = interpretation.frequency(equipment, number)
         self.state.interpretation.automatic_table = self.state.interpretation.table.copy(deep=True)
 
         self.ui.doubleSpinBox_undefine_max.setMaximum(self.state.interpretation.table['depth'].max())
@@ -1061,6 +1072,8 @@ class Controller:
         self.ui.doubleSpinBox_defect2.setEnabled(True)
         self.ui.doubleSpinBox_min_cement.setEnabled(True)
         self.ui.doubleSpinBox_max_cement.setEnabled(True)
+        method = 'по функции' if source == 'rel_ampl' else 'по производной'
+        self.ui.label_info.setText('Построена цементограмма ' + method + ': ' + item.text())
 
 
     def cement_from_pdf_new(self):

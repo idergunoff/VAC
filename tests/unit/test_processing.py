@@ -139,6 +139,26 @@ class HeadlessTests(unittest.TestCase):
         for value, expected in [(0.323299, 'red'), (0.3233, 'yellow'), (0.680599, 'yellow'), (0.6806, 'green')]:
             self.assertEqual(interpretation.damping_class(value), expected)
 
+    def test_function_cement_uses_relative_amplitude_and_preserves_source(self):
+        for equipment in ('new', 'old'):
+            measurements = MeasurementSet(equipment)
+            measurements.signals = pd.DataFrame({
+                'depth': np.arange(120, dtype=float), '1_rel_ampl': np.arange(120) / 10,
+                '1_diff_result': -np.arange(120), '1_func': np.ones(120)})
+            measurements.interval_min, measurements.interval_max = 0, 115
+            before = measurements.signals.copy(deep=True)
+            for minimum in (0, 90):
+                measurements.interval_min = minimum
+                table = interpretation.prepare_cement(measurements, 1, 110, source='rel_ampl')
+                expected = before.iloc[max(86, minimum):110]
+                np.testing.assert_array_equal(table.depth, expected.depth)
+                np.testing.assert_array_equal(table.first_sig, expected['1_rel_ampl'])
+                np.testing.assert_array_equal(table.corr_sig, expected['1_rel_ampl'])
+                np.testing.assert_array_equal(table.func, expected['1_func'])
+                self.assertTrue((table.corr_coeff == 1).all())
+                table.loc[0, 'corr_sig'] = -1000
+                pd.testing.assert_frame_equal(measurements.signals, before)
+
     def test_readers_and_explicit_file_order(self):
         with tempfile.TemporaryDirectory(prefix='VAC кириллица ') as tmp:
             root = Path(tmp)

@@ -70,14 +70,17 @@ def damping_class(value):
         return 'green'
 
 
-def prepare_cement(measurements, signal, maximum=None):
-    """Positional [max(86,min):max) slice; output has an independent zero-based index."""
+def prepare_cement(measurements, signal, maximum=None, *, source='diff_result'):
+    """Prepare a derivative or function-relative curve without changing its values.
+
+    Positional [max(86,min):max) slice with an independent zero-based index.
+    """
     prefix = str(signal)
     maximum = measurements.interval_max if maximum is None else maximum
     interval = slice(max(86, measurements.interval_min), maximum)
     signals = measurements.signals
     table = pd.DataFrame(signals['depth'].iloc[interval])
-    table['first_sig'] = signals[prefix + '_diff_result'].iloc[interval]
+    table['first_sig'] = signals[prefix + '_' + source].iloc[interval]
     table['func'] = signals[prefix + '_func'].iloc[interval]
     table = table.reset_index(drop=True)
     table['corr_sig'] = table['first_sig'].copy()
