@@ -14,6 +14,7 @@ from ..storage import Archive
 from ..reporting import figures, word
 from ..reporting.template import template_hash
 from ..resources import template_path
+from .report_destination import choose_report_path, remember_report_path
 
 
 @contextmanager
@@ -260,10 +261,12 @@ class ArchiveMenu:
             db.save_report(interpretation_id, content, details=values | {'template_texts': texts},
                            template_version='editable-text-v1', template_hash=template_hash(texts))
         Path(path).write_bytes(content)
-        self.status('Отчёт сохранён в архиве и в ' + str(path))
+        remembered = remember_report_path(path)
+        self.status('Отчёт сохранён в архиве и в ' + str(path) +
+                    ('' if remembered else '. Не удалось запомнить папку для следующего сохранения.'))
 
     def report_dialog(self):
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self.c.window, 'Сохранить отчёт', '', 'Word (*.docx)')
+        path = choose_report_path(self.c.window, self.c.ui.lineEdit_number_skv.text())
         if path:
             self.save_report(path)
 

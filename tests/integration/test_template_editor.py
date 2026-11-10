@@ -98,7 +98,9 @@ class TemplateEditorTests(unittest.TestCase):
         try:
             os.chdir(self.tmp.name)
             with patch.object(plt.Figure, 'show', side_effect=AssertionError('preview')):
-                self.c.ui.pushButton_save_cement.click()
+                with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
+                                  return_value=(str(Path(self.tmp.name) / 'цементограмма_по_скв_17.docx'), 'Word (*.docx)')):
+                    self.c.ui.pushButton_save_cement.click()
             document = docx.Document('цементограмма_по_скв_17.docx')
             self.assertEqual(document.paragraphs[1].text, 'Организация для экспорта')
             self.assertEqual(document.tables[0].cell(0, 0).text, 'Скважина: 17')

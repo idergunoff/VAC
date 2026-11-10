@@ -159,7 +159,9 @@ class WorkspaceTests(unittest.TestCase):
             try:
                 os.chdir(tmp)
                 with patch.object(plt.Figure, 'show', side_effect=AssertionError('Preview opened')):
-                    self.ui.pushButton_save_cement.click()
+                    with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
+                                      return_value=(str(Path(tmp) / 'цементограмма_по_скв_Тест.docx'), 'Word (*.docx)')):
+                        self.ui.pushButton_save_cement.click()
                 self.assertTrue(Path('цементограмма_по_скв_Тест.docx').exists())
                 self.assertTrue(Path('temp.png').exists())
                 self.assertEqual(plt.get_fignums(), [])
