@@ -261,8 +261,15 @@ class ArchiveMenu:
             db.save_report(interpretation_id, content, details=values | {'template_texts': texts},
                            template_version='editable-text-v1', template_hash=template_hash(texts))
         Path(path).write_bytes(content)
+        try:
+            options_path = self.c.save_report_options(path)
+        except OSError as exc:
+            self.status('Отчёт сохранён в архиве и в ' + str(path) +
+                        '. Не удалось сохранить настройки: ' + str(exc))
+            self.c.ui.label_info.setStyleSheet('color:red')
+            return
         remembered = remember_report_path(path)
-        self.status('Отчёт сохранён в архиве и в ' + str(path) +
+        self.status('Отчёт сохранён в архиве и в ' + str(path) + ', настройки: ' + options_path.name +
                     ('' if remembered else '. Не удалось запомнить папку для следующего сохранения.'))
 
     def report_dialog(self):

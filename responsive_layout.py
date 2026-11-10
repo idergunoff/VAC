@@ -399,6 +399,10 @@ def apply_responsive_layout(ui, window):
     cement_layout.addWidget(ui.editTools)
     ui.editTools.hide()
     cement_layout.addWidget(cement_scale)
+    ui.pushButton_minmax_cem.setText('Автовыравнивание')
+    ui.pushButton_minmax_cem.setToolTip(
+        'Расположить уровни дефектов симметрично относительно центра '
+        'и подобрать масштаб по всей отредактированной кривой с запасом 10%.')
     cement_layout.addWidget(ui.pushButton_minmax_cem)
     cement_layout.addWidget(ui.pushButton_cement)
     cement_layout.addStretch()
@@ -419,6 +423,13 @@ def apply_responsive_layout(ui, window):
     ui.redoButton = QtWidgets.QToolButton()
     ui.redoButton.setText('Повторить')
     ui.redoButton.setToolTip('Повторить отменённую коррекцию (Ctrl+Shift+Z).')
+    ui.alignReportButton = QtWidgets.QToolButton()
+    ui.alignReportButton.setObjectName('alignReportButton')
+    ui.alignReportButton.setText('Выровнять перед отчётом…')
+    ui.alignReportButton.setToolTip('Подобрать масштаб и уровни дефектов с предпросмотром отчёта.')
+    ui.alignReportButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+    cement_layout.insertWidget(cement_layout.count() - 2, ui.alignReportButton)
+    ui.alignReportButton.setEnabled(False)
     for button in [ui.editButton, ui.undoButton, ui.redoButton]:
         plot_toolbar.addWidget(button)
         button.setEnabled(False)
@@ -434,9 +445,13 @@ def apply_responsive_layout(ui, window):
     ui.referenceSelection = QtWidgets.QComboBox()
     ui.referenceSelection.addItems(['Оба эталона', 'Хорошая скважина', 'Плохая скважина'])
     ui.referenceFrequency = QtWidgets.QComboBox()
-    ui.referenceFrequency.addItems(['Обе частоты', '5 Гц', '2 Гц'])
+    ui.referenceFrequency.setToolTip('Средние по частоте, отдельный сигнал или рассчитанная сумма.')
+    ui.referenceFrequency.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
+    ui.referenceFrequency.setMinimumContentsLength(10)
     for combo in (ui.referenceDevice, ui.referenceSelection, ui.referenceFrequency):
-        reference_layout.addWidget(combo)
+        combo.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        combo.setMinimumContentsLength(8)
+        reference_layout.addWidget(combo, 1)
     plot_layout.addWidget(ui.referenceControls)
     ui.referenceControls.hide()
     ui.graphicsView.setMinimumSize(200, 120)
@@ -469,6 +484,13 @@ def apply_responsive_layout(ui, window):
     ui.progressBar.valueChanged.connect(lambda value: ui.progressBar.setVisible(0 <= value < ui.progressBar.maximum()))
     root.addWidget(ui.progressBar)
     status = QtWidgets.QHBoxLayout()
+    # Coordinate text must never change the status row's height or plot geometry.
+    for label in (ui.label_14, ui.label_15, ui.label_x, ui.label_y):
+        label.setWordWrap(False)
+    for label in (ui.label_x, ui.label_y):
+        label.setFixedWidth(label.fontMetrics().horizontalAdvance('-000000.000') + 8)
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+    ui.horizontalLayoutWidget_5.setFixedSize(ui.horizontalLayoutWidget_5.sizeHint())
     status.addWidget(ui.label_info, 1)
     status.addWidget(ui.horizontalLayoutWidget_5)
     root.addLayout(status)
