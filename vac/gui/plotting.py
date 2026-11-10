@@ -130,22 +130,12 @@ def draw_cement(state, values, plot):
     defect1 = values['doubleSpinBox_defect1.value']
     defect2 = values['doubleSpinBox_defect2.value']
     plot.clear()
-    plot.plot(x=state.interpretation.table['depth'], y=state.interpretation.table['corr_sig'], pen=pg.mkPen(color='#B4FEAE', width=2, dash=[2, 2]))
+    curve = plot.plot(x=state.interpretation.table['depth'], y=state.interpretation.table['corr_sig'], pen=pg.mkPen(color='#B4FEAE', width=2))
     d1 = pg.InfiniteLine(pos=defect1, angle=0, pen=pg.mkPen(color='#E59D38', width=0.9, dash=[5, 5]))
     d2 = pg.InfiniteLine(pos=defect2, angle=0, pen=pg.mkPen(color='#FF1705', width=0.9, dash=[5, 5]))
     plot.addItem(d1)
     plot.addItem(d2)
-    if values['checkBox_corr_mode.checkState'] == 2:
-        plot.plot(x=state.interpretation.table['depth'], y=state.interpretation.table['first_sig'], pen=pg.mkPen(color='#FF3D70', width=2, dash=[8, 3, 2, 3]))
-        line_x1 = values['doubleSpinBox_x1_line.value']
-        line_x2 = values['doubleSpinBox_x2_line.value']
-        line_y = values['doubleSpinBox_y_line.value']
-        lx1 = pg.InfiniteLine(pos=line_x1, angle=90, pen=pg.mkPen(width=0.7, dash=[8, 2]))
-        lx2 = pg.InfiniteLine(pos=line_x2, angle=90, pen=pg.mkPen(width=0.7, dash=[8, 2]))
-        ly = pg.InfiniteLine(pos=line_y, angle=0, pen=pg.mkPen(width=0.7, dash=[8, 2]))
-        plot.addItem(lx1)
-        plot.addItem(lx2)
-        plot.addItem(ly)
+    return curve
 
 
 def plot_graph(state, values, plot, n_sig, sig_width, sig_dash, color):

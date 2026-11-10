@@ -1,7 +1,33 @@
 """Manual curve operations. Bounds are inclusive for curves, exclusive for class intervals."""
 from copy import deepcopy
+import numpy as np
 from scipy.interpolate import interp1d
 from ..calculation import get_nearest_value
+
+
+def local_shift(source, x1, x2, anchor, delta):
+    """Move an interior sample by delta, fading smoothly to zero at both bounds.
+
+    Weights use physical depth (also for irregular/descending samples), not row
+    numbers. Existing oscillations are retained; missing samples stay missing.
+    The input and all columns except corr_sig are left untouched.
+    """
+    if not np.isfinite([x1, x2, anchor, delta]).all() or not x1 < anchor < x2:
+        raise ValueError('Выберите точку строго внутри области влияния.')
+    table = source.copy(deep=True)
+    depth = table['depth'].to_numpy(dtype=float)
+    signal = table['corr_sig'].to_numpy(dtype=float, copy=True)
+    mask = np.isfinite(depth) & np.isfinite(signal) & (depth > x1) & (depth < x2)
+    position = depth[mask]
+    distance = np.where(position <= anchor, (position - x1) / (anchor - x1),
+                        (x2 - position) / (x2 - anchor))
+    weight = distance * distance * (3 - 2 * distance)
+    with np.errstate(over='ignore', invalid='ignore'):
+        signal[mask] += delta * weight
+    if not np.isfinite(signal[mask]).all():
+        raise ValueError('Слишком большое изменение значения.')
+    table['corr_sig'] = signal
+    return table
 
 def corr_sig(source, x1, x2, y, shift, linear):
     table = source.copy(deep=True)

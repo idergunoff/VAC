@@ -14,13 +14,15 @@ class WorkspaceActions:
         ui.undoButton.clicked.connect(self.undo)
         ui.redoButton.clicked.connect(self.redo)
         self.shortcuts = []
-        for key, slot in [('Ctrl+Z', self.undo), ('Ctrl+Shift+Z', self.redo)]:
+        for key, slot in [('Ctrl+Z', self.undo), ('Ctrl+Shift+Z', self.redo), ('Ctrl+Y', self.redo)]:
             shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), controller.window)
             shortcut.activated.connect(slot)
             self.shortcuts.append(shortcut)
         self.refresh()
 
     def reset(self):
+        if hasattr(self.c, 'curve_editor'):
+            self.c.curve_editor.reset()
         self.undo_stack.clear()
         self.redo_stack.clear()
         self.interpretation = self.c.state.interpretation
@@ -46,11 +48,15 @@ class WorkspaceActions:
         self.refresh()
 
     def undo(self):
+        if hasattr(self.c, 'curve_editor') and self.c.curve_editor.cancel():
+            return
         if self.undo_stack:
             self.redo_stack.append(self.snapshot())
             self.restore(self.undo_stack.pop())
 
     def redo(self):
+        if hasattr(self.c, 'curve_editor') and self.c.curve_editor.cancel():
+            return
         if self.redo_stack:
             self.undo_stack.append(self.snapshot())
             self.restore(self.redo_stack.pop())
@@ -67,6 +73,8 @@ class WorkspaceActions:
         ui = self.c.ui
         self.refresh_tooltips()
         if self.interpretation is not self.c.state.interpretation:
+            if hasattr(self.c, 'curve_editor'):
+                self.c.curve_editor.reset()
             self.undo_stack.clear()
             self.redo_stack.clear()
             self.interpretation = self.c.state.interpretation
