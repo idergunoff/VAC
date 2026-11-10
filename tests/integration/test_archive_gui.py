@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import docx
 from PyQt5 import QtWidgets
 import matplotlib.pyplot as plt
 
@@ -26,6 +27,7 @@ from vac.services import archive as service
 from vac.gui.archive import capture_widgets, blocked
 from vac.storage import Archive
 from vac.storage.backup import backup, restore
+from vac.reporting.template import TemplateStore, template_hash
 
 
 @contextmanager
@@ -52,6 +54,10 @@ class ArchiveGuiTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='VAC архив кириллица ')
         self.path = Path(self.tmp.name) / 'исследования.sqlite'
+        self.template_store = TemplateStore(Path(self.tmp.name) / 'template.json')
+        template_patch = patch('vac.gui.template_editor.user_template_store', return_value=self.template_store)
+        template_patch.start()
+        self.addCleanup(template_patch.stop)
         self.previous = Path.cwd()
         os.chdir(self.tmp.name)
         self.window, self.c = create_window()
@@ -132,12 +138,20 @@ class ArchiveGuiTests(unittest.TestCase):
                 self.assertEqual(self.c.state.interpretation.intervals, before.interpretation.intervals)
                 self.assertEqual(capture_widgets(self.c.ui)['lineEdit_number_skv'], saved_widgets['lineEdit_number_skv'])
                 target = Path(self.tmp.name) / ('отчёт ' + equipment + '.docx')
+                template_texts = {'organization': 'Организация архивного отчёта',
+                                  'chart_title': 'Исследование скважины {скважина}'}
+                self.template_store.save(template_texts)
                 with patch.object(service, 'code_hash', return_value='different-report-program'):
                     menu.save_report(target)
+                document = docx.Document(target)
+                self.assertEqual(document.paragraphs[1].text, template_texts['organization'])
+                self.assertEqual(document.tables[0].cell(0, 0).text, 'Исследование скважины 7')
                 with Archive(self.path) as db:
                     _, _, interpretation_id = db.open_gui_version(menu.run_id)
                     report_id = db.list_reports(interpretation_id)[0]
                     self.assertEqual(db.open_report(report_id)['payload'], target.read_bytes())
+                    self.assertEqual(db.open_report(report_id)['details']['template_texts'], template_texts)
+                    self.assertEqual(db.open_report(report_id)['template_hash'], template_hash(template_texts))
                     self.assertEqual(db.open_run(menu.run_id)['algorithm_version'], db.open_run(run_id)['algorithm_version'])
                     self.assertEqual(db.open_run(menu.run_id)['program_version'], 'different-report-program')
                     self.assertTrue(db.open_interpretation(interpretation_id)['intervals'])

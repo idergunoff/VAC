@@ -1,6 +1,5 @@
 """Small archive menu beside the existing form; file workflows remain available."""
 from contextlib import contextmanager
-from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 import sqlite3
@@ -13,6 +12,7 @@ from ..domain.state import ApplicationState
 from ..services import archive as service
 from ..storage import Archive
 from ..reporting import figures, word
+from ..reporting.template import template_hash
 from ..resources import template_path
 
 
@@ -240,6 +240,7 @@ class ArchiveMenu:
         table = self.c.state.interpretation.table
         if table is None:
             raise ValueError('Сначала выберите интерпретацию')
+        texts = self.c.template_menu.store.load()
         ui = self.c.ui
         d1, d2 = ui.doubleSpinBox_defect1.value(), ui.doubleSpinBox_defect2.value()
         table['quality'] = self.c.calc_defect(table.corr_sig, d1, d2, self.c.state.interpretation.intervals)
@@ -250,14 +251,14 @@ class ArchiveMenu:
             image = Path(tmp) / 'cement.png'
             figures.cementogramma(table, ui.doubleSpinBox_min_cement.value(), ui.doubleSpinBox_max_cement.value(),
                                   d1, d2, ui.name_cement.text(), image)
-            document = word.build_report(table, self.c.state.interpretation.frequency, values, template_path(), image)
+            document = word.build_report(table, self.c.state.interpretation.frequency, values, template_path(), image, texts=texts)
             stream = BytesIO(); document.save(stream); content = stream.getvalue()
         # Always snapshot current edits and report fields; never attach changed data to an old version.
         run_id = self.save_current()
         with self.connect() as db:
             _, _, interpretation_id = db.open_gui_version(run_id)
-            db.save_report(interpretation_id, content, details=values, template_version='legacy-phase-A',
-                           template_hash=sha256(Path(template_path()).read_bytes()).hexdigest())
+            db.save_report(interpretation_id, content, details=values | {'template_texts': texts},
+                           template_version='editable-text-v1', template_hash=template_hash(texts))
         Path(path).write_bytes(content)
         self.status('Отчёт сохранён в архиве и в ' + str(path))
 
