@@ -5,26 +5,47 @@ from scipy.interpolate import interp1d
 from ..calculation import get_nearest_value
 
 
+def local_shift_candidates(source, x1, x2):
+    """Editable samples: interior points and data endpoints reached by the region."""
+    depth = source['depth'].to_numpy(dtype=float)
+    signal = source['corr_sig'].to_numpy(dtype=float)
+    finite_depth = depth[np.isfinite(depth)]
+    if not np.isfinite([x1, x2]).all() or x1 >= x2 or not len(finite_depth):
+        return np.array([], dtype=int)
+    inside = (depth > x1) & (depth < x2)
+    endpoints = ((depth == x1) & (x1 == finite_depth.min())) | ((depth == x2) & (x2 == finite_depth.max()))
+    return np.flatnonzero(np.isfinite(depth) & np.isfinite(signal) & (inside | endpoints))
+
+
 def local_shift(source, x1, x2, anchor, delta):
-    """Move an interior sample by delta, fading smoothly to zero at both bounds.
+    """Move a sample by delta, fading to zero at the other region bounds.
 
     Weights use physical depth (also for irregular/descending samples), not row
     numbers. Existing oscillations are retained; missing samples stay missing.
+    A data endpoint coinciding with a region bound can be moved with a one-sided
+    falloff. Region bounds inside the data remain pinned.
     The input and all columns except corr_sig are left untouched.
     """
-    if not np.isfinite([x1, x2, anchor, delta]).all() or not x1 < anchor < x2:
-        raise ValueError('Выберите точку строго внутри области влияния.')
+    if not np.isfinite([x1, x2, anchor, delta]).all() or not x1 <= anchor <= x2 or x1 >= x2:
+        raise ValueError('Выберите точку в области влияния ненулевой ширины.')
     table = source.copy(deep=True)
     depth = table['depth'].to_numpy(dtype=float)
     signal = table['corr_sig'].to_numpy(dtype=float, copy=True)
-    mask = np.isfinite(depth) & np.isfinite(signal) & (depth > x1) & (depth < x2)
-    position = depth[mask]
-    distance = np.where(position <= anchor, (position - x1) / (anchor - x1),
-                        (x2 - position) / (x2 - anchor))
+    indices = local_shift_candidates(source, x1, x2)
+    position = depth[indices]
+    if anchor in (x1, x2) and not np.any(position == anchor):
+        raise ValueError('На границе области можно двигать только крайнюю точку графика.')
+    if anchor == x1:
+        distance = (x2 - position) / (x2 - anchor)
+    elif anchor == x2:
+        distance = (position - x1) / (anchor - x1)
+    else:
+        distance = np.where(position <= anchor, (position - x1) / (anchor - x1),
+                            (x2 - position) / (x2 - anchor))
     weight = distance * distance * (3 - 2 * distance)
     with np.errstate(over='ignore', invalid='ignore'):
-        signal[mask] += delta * weight
-    if not np.isfinite(signal[mask]).all():
+        signal[indices] += delta * weight
+    if not np.isfinite(signal[indices]).all():
         raise ValueError('Слишком большое изменение значения.')
     table['corr_sig'] = signal
     return table
