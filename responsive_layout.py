@@ -327,6 +327,14 @@ def apply_responsive_layout(ui, window):
     cement = QtWidgets.QWidget()
     cement_layout = _column(cement)
     cement_layout.addWidget(ui.pushButton_int_cement)
+    ui.pushButton_cement_func = QtWidgets.QPushButton('Цементограмма по функции')
+    ui.pushButton_cement_func.setObjectName('pushButton_cement_func')
+    ui.pushButton_cement_func.setMinimumHeight(30)
+    ui.pushButton_cement_func.setToolTip(
+        'Выберите один сигнал или сумму в разделе «Данные». '
+        'Построить цементограмму по отклонению от функции затухания '
+        'для редактирования и выгрузки отчёта.')
+    cement_layout.addWidget(ui.pushButton_cement_func)
     cement_scale = _form('Масштаб и дефекты', [
         ('Минимум', ui.doubleSpinBox_min_cement), ('Максимум', ui.doubleSpinBox_max_cement),
         ('Дефект 1', ui.doubleSpinBox_defect1), ('Дефект 2', ui.doubleSpinBox_defect2),
