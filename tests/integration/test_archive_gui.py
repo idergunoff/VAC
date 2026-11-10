@@ -173,6 +173,33 @@ class ArchiveGuiTests(unittest.TestCase):
                 menu.open_version(run_id)
                 pd.testing.assert_frame_equal(self.c.state.interpretation.table, before.interpretation.table, check_exact=True)
 
+    def test_function_working_units_and_precise_thresholds_survive_reopen(self):
+        for equipment in ('new', 'old'):
+            with self.subTest(equipment=equipment):
+                report = self.import_sample(equipment)
+                menu = self.c.archive_menu
+                menu.open_study(report.study_id)
+                menu.recalculate()
+                checkbox = self.c.ui.checkBox_signal1 if equipment == 'new' else self.c.ui.checkBox_signal_old_1
+                checkbox.setChecked(True)
+                self.c.cement_from_function()
+                before = self.c.state.interpretation.table.copy(deep=True)
+                self.c.ui.doubleSpinBox_defect1.setValue(-.1234)
+                self.c.ui.doubleSpinBox_defect2.setValue(.5678)
+                self.assertEqual(self.c.ui.doubleSpinBox_defect1.value(), -.1234)
+                self.assertEqual(self.c.ui.doubleSpinBox_defect2.value(), .5678)
+                run = menu.save_current()
+                self.window.close()
+                self.window, self.c = create_window()
+                menu = self.c.archive_menu
+                menu.path = str(self.path)
+                with patch.object(self.c, 'calc', side_effect=AssertionError('recalculation')):
+                    menu.open_version(run)
+                pd.testing.assert_frame_equal(self.c.state.interpretation.table, before, check_exact=True)
+                pd.testing.assert_frame_equal(self.c.state.interpretation.automatic_table, before, check_exact=True)
+                self.assertEqual(self.c.ui.doubleSpinBox_defect1.value(), -.1234)
+                self.assertEqual(self.c.ui.doubleSpinBox_defect2.value(), .5678)
+
     def test_import_and_version_rollback_and_legacy_incompleteness(self):
         report = self.import_sample('new')
         with Archive(self.path) as db, sample_order('new') as root:

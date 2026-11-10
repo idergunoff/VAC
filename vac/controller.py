@@ -630,6 +630,8 @@ class Controller:
             'checkBox_pdf_old.checkState',
             'checkBox_rel_ampl.checkState',
             'checkBox_rel_ampl_old.checkState',
+            'spinBox_coeff_dif_res.value',
+            'spinBox_coeff_dif_res_old.value',
             'checkBox_signal1.checkState',
             'checkBox_signal1.isEnabled',
             'checkBox_signal2.checkState',
@@ -700,6 +702,7 @@ class Controller:
             'checkBox_origin_sig.checkState',
             'checkBox_rel_ampl.checkState',
             'doubleSpinBox_int_max.value',
+            'spinBox_coeff_dif_res.value',
         )), self.ui.graphicsView, n_sig, sig_width, sig_dash, color)
 
 
@@ -712,6 +715,7 @@ class Controller:
             'checkBox_norm_old.checkState',
             'checkBox_rel_ampl_old.checkState',
             'doubleSpinBox_int_max.value',
+            'spinBox_coeff_dif_res_old.value',
         )), self.ui.graphicsView, n_sig, sig_width, sig_dash, color)
 
 
@@ -1034,7 +1038,9 @@ class Controller:
             self.ui.label_info.setText('Сначала загрузите и рассчитайте выбранный сигнал.')
             return
         maximum = self.calc_max_int(measurements.signals, measurements.statistics, number) if equipment == 'new' else measurements.interval_max
-        table = interpretation.prepare_cement(measurements, number, maximum, source=source)
+        suffix = '' if equipment == 'new' else '_old'
+        scale = getattr(self.ui, 'spinBox_coeff_dif_res' + suffix).value()
+        table = interpretation.prepare_cement(measurements, number, maximum, source=source, function_scale=scale)
         if table.empty:
             self.ui.label_info.setText('В выбранном интервале нет данных для цементограммы.')
             return
@@ -1058,11 +1064,7 @@ class Controller:
         self.state.interpretation.intervals.absent = []  # интервалы отсутствия цемента
         min_value = self.state.interpretation.table['first_sig'].min()
         max_value = self.state.interpretation.table['first_sig'].max()
-        self.ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
-        self.ui.doubleSpinBox_max_cement.setValue(max_value + (10 * (max_value - min_value) / 100))
-
-        self.ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value)/3)
-        self.ui.doubleSpinBox_defect2.setValue(min_value + (2*(max_value - min_value)/3))
+        self._set_cement_limits(min_value, max_value)
         self.ui.doubleSpinBox_x1_line.setValue(self.state.interpretation.table['depth'].min())
         self.ui.doubleSpinBox_x2_line.setValue(self.state.interpretation.table['depth'].min()+10)
         self.ui.doubleSpinBox_y_line.setValue(self.ui.doubleSpinBox_defect2.value())
@@ -1074,6 +1076,20 @@ class Controller:
         self.ui.doubleSpinBox_max_cement.setEnabled(True)
         method = 'по функции' if source == 'rel_ampl' else 'по производной'
         self.ui.label_info.setText('Построена цементограмма ' + method + ': ' + item.text())
+
+    def _set_cement_limits(self, minimum, maximum):
+        span = maximum - minimum
+        self.ui.doubleSpinBox_min_cement.setValue(minimum - span / 10)
+        self.ui.doubleSpinBox_max_cement.setValue(maximum + span / 10)
+        first, second = self.ui.doubleSpinBox_defect1, self.ui.doubleSpinBox_defect2
+        # The preceding curve's linked limits must not clamp a new scale.
+        with QtCore.QSignalBlocker(first), QtCore.QSignalBlocker(second):
+            first.setRange(-10000, 10000)
+            second.setRange(-10000, 10000)
+            first.setValue(minimum + span / 3)
+            second.setValue(minimum + 2 * span / 3)
+            first.setMaximum(second.value())
+            second.setMinimum(first.value())
 
 
     def cement_from_pdf_new(self):
@@ -1092,11 +1108,7 @@ class Controller:
         self.state.interpretation.intervals.absent = []  # интервалы отсутствия цемента
         min_value = self.state.interpretation.table['first_sig'].min()
         max_value = self.state.interpretation.table['first_sig'].max()
-        self.ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
-        self.ui.doubleSpinBox_max_cement.setValue(max_value + (10 * (max_value - min_value) / 100))
-
-        self.ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value) / 3)
-        self.ui.doubleSpinBox_defect2.setValue(min_value + (2 * (max_value - min_value) / 3))
+        self._set_cement_limits(min_value, max_value)
         self.ui.doubleSpinBox_x1_line.setValue(self.state.interpretation.table['depth'].min())
         self.ui.doubleSpinBox_x2_line.setValue(self.state.interpretation.table['depth'].min() + 10)
         self.ui.doubleSpinBox_y_line.setValue(self.ui.doubleSpinBox_defect2.value())
@@ -1120,10 +1132,7 @@ class Controller:
         self.state.interpretation.intervals.absent = []  # интервалы отсутствия цемента
         min_value = self.state.interpretation.table['first_sig'].min()
         max_value = self.state.interpretation.table['first_sig'].max()
-        self.ui.doubleSpinBox_min_cement.setValue(min_value - (10 * (max_value - min_value) / 100))
-        self.ui.doubleSpinBox_max_cement.setValue(max_value + (10 * (max_value - min_value) / 100))
-        self.ui.doubleSpinBox_defect1.setValue(min_value + (max_value - min_value) / 3)
-        self.ui.doubleSpinBox_defect2.setValue(min_value + (2 * (max_value - min_value) / 3))
+        self._set_cement_limits(min_value, max_value)
         self.ui.doubleSpinBox_x1_line.setValue(self.state.interpretation.table['depth'].min())
         self.ui.doubleSpinBox_x2_line.setValue(self.state.interpretation.table['depth'].min() + 10)
         self.ui.doubleSpinBox_y_line.setValue(self.ui.doubleSpinBox_defect2.value())

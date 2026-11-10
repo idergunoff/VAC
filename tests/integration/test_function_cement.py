@@ -55,7 +55,9 @@ class FunctionCementTests(unittest.TestCase):
         self.assertTrue(self.ui.pushButton_cement_func.isVisible())
         self.ui.pushButton_cement_func.click()
         result = self.c.state.interpretation
-        np.testing.assert_allclose(result.table.first_sig, expected[str(number) + '_rel_ampl'])
+        suffix = '' if equipment == 'new' else '_old'
+        scale = getattr(self.ui, 'spinBox_coeff_dif_res' + suffix).value()
+        np.testing.assert_allclose(result.table.first_sig, expected[str(number) + '_rel_ampl'] * scale)
         np.testing.assert_array_equal(result.table.depth, expected.depth)
         np.testing.assert_array_equal(self.ui.graphicsView.listDataItems()[0].yData, result.table.corr_sig)
         self.assertEqual(result.signal.equipment, equipment)
@@ -90,6 +92,9 @@ class FunctionCementTests(unittest.TestCase):
                 getattr(self.ui, 'doubleSpinBox_coeff_func' + suffix).setValue(.2)
                 adjusted = self.assert_function_cement(equipment, check)
                 self.assertFalse(first.first_sig.equals(adjusted.first_sig))
+                getattr(self.ui, 'spinBox_coeff_dif_res' + suffix).setValue(700)
+                enlarged = self.assert_function_cement(equipment, check)
+                np.testing.assert_allclose(enlarged.first_sig, adjusted.first_sig * 2)
 
                 # The existing conversion retains its derivative-based result.
                 self.ui.pushButton_int_cement.click()
@@ -100,12 +105,59 @@ class FunctionCementTests(unittest.TestCase):
                     signals['1_diff_result'].iloc[start:start + len(derivative)])
 
                 # Legacy sums use the relative deviation without the extra
-                # differentiation. Conversion must use that stored curve too.
+                # differentiation. Conversion applies the same working gain.
                 for slot in range(1, 4):
                     self.select_only(check)
                     getattr(self.ui, 'pushButton_sum' + str(slot) + suffix).click()
                     summed = getattr(self.ui, 'checkBox_sum' + str(slot) + suffix)
                     self.assert_function_cement(equipment, summed)
+
+    def test_small_function_values_threshold_precision_and_switching_methods(self):
+        raw = np.r_[np.zeros(86), np.full(40, -.003), np.full(40, .001), np.full(40, .005)]
+        for equipment, suffix, checkbox_name in [
+            ('new', '', 'checkBox_signal1'), ('old', '_old', 'checkBox_signal_old_1')
+        ]:
+            with self.subTest(equipment=equipment):
+                measurements = getattr(self.c.state, equipment)
+                measurements.signals = pd.DataFrame({
+                    'depth': np.arange(len(raw), dtype=float), '1_rel_ampl': raw,
+                    '1_diff_result': 20 + raw * 1000, '1_func': np.ones(len(raw))})
+                measurements.interval_min, measurements.interval_max = 0, len(raw) - 1
+                measurements.statistics.at[1, 'max_h'] = len(raw) - 1
+                measurements.statistics.at[1, 'k_damp'] = .5
+                with QtCore.QSignalBlocker(self.ui.doubleSpinBox_int_max):
+                    self.ui.doubleSpinBox_int_max.setValue(len(raw) - 1)
+                check = getattr(self.ui, checkbox_name)
+                check.setEnabled(True)
+                self.select_only(check)
+
+                for button in (self.ui.pushButton_int_cement, self.ui.pushButton_cement_func) * 2:
+                    button.click()
+                    table = self.c.state.interpretation.table
+                    low, high = table.first_sig.min(), table.first_sig.max()
+                    self.assertAlmostEqual(self.ui.doubleSpinBox_defect1.value(), low + (high-low)/3, places=4)
+                    self.assertAlmostEqual(self.ui.doubleSpinBox_defect2.value(), low + 2*(high-low)/3, places=4)
+                np.testing.assert_allclose(table.corr_sig, raw[86:-1] * 350)
+                self.ui.doubleSpinBox_defect1.setValue(.1234)
+                self.ui.doubleSpinBox_defect2.setValue(.5678)
+                self.assertEqual(self.ui.doubleSpinBox_defect1.value(), .1234)
+                self.assertEqual(self.ui.doubleSpinBox_defect2.value(), .5678)
+                self.assertEqual(self.ui.doubleSpinBox_defect1.singleStep(), .01)
+                with QtCore.QSignalBlocker(self.ui.checkBox_abs_def):
+                    self.ui.checkBox_abs_def.setChecked(True)
+                quality = self.c.calc_defect(table.corr_sig, .1234, .5678, self.c.state.interpretation.intervals)
+                self.assertEqual(quality, [0]*40 + [1]*40 + [2]*39)
+
+                # Comparison uses the same units as the editable cementogram.
+                for field in ('checkBox_envelop', 'checkBox_mean', 'checkBox_func',
+                              'checkBox_norm', 'checkBox_diff_result'):
+                    with QtCore.QSignalBlocker(getattr(self.ui, field + suffix)):
+                        getattr(self.ui, field + suffix).setChecked(False)
+                with QtCore.QSignalBlocker(getattr(self.ui, 'checkBox_rel_ampl' + suffix)):
+                    getattr(self.ui, 'checkBox_rel_ampl' + suffix).setChecked(True)
+                self.ui.graphicsView.clear()
+                getattr(self.c, 'plot_graph' + suffix)(1, 1, [2, 2], 0)
+                np.testing.assert_allclose(self.ui.graphicsView.listDataItems()[0].yData, raw[:-1] * 350)
 
     def test_invalid_selection_or_interval_keeps_current_interpretation(self):
         before = self.c.state.interpretation
