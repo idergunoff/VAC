@@ -41,6 +41,27 @@ class WorkspaceTests(unittest.TestCase):
         plt.close('all')
         self.app.processEvents()
 
+    def test_accordion_can_close_all_sections_and_reopen_programmatically(self):
+        pages = self.ui.workspace.pages
+        for index, button in enumerate(pages.buttons):
+            self.ui.workspace.select(index)
+            self.app.processEvents()
+            self.assertTrue(button.isChecked())
+            self.assertTrue(pages.currentWidget().isVisible())
+            button.click()
+            self.app.processEvents()
+            self.assertEqual(pages.currentIndex(), -1)
+            self.assertIsNone(pages.currentWidget())
+            self.assertTrue(all(b.isVisible() and not b.isChecked() for b in pages.buttons))
+            self.assertTrue(all(not area.isVisible() for area in pages.contents))
+            button.click()
+            self.assertEqual(pages.currentIndex(), index)
+        pages.buttons[2].click()
+        self.ui.editButton.click()
+        self.app.processEvents()
+        self.assertEqual(pages.currentIndex(), 2)
+        self.assertTrue(self.ui.editTools.isVisible())
+
     def test_edit_undo_redo_and_invalidation(self):
         before = self.c.state.interpretation.table.copy(deep=True)
         self.ui.editButton.click()
