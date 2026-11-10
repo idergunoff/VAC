@@ -300,7 +300,7 @@ def apply_responsive_layout(ui, window):
             ('Окно усреднения', getattr(ui, 'spinBox_mean_win' + suffix)),
             ('Нормирование', getattr(ui, 'doubleSpinBox_coeff_norm' + suffix)),
             ('Коррекция функции', getattr(ui, 'doubleSpinBox_coeff_func' + suffix)),
-            ('Масштаб производной', getattr(ui, 'spinBox_coeff_dif_res' + suffix)),
+            ('Масштаб цементограмм', getattr(ui, 'spinBox_coeff_dif_res' + suffix)),
             ('Коэффициент A', getattr(ui, 'doubleSpinBox_kA' + suffix)),
             ('Коэффициент B', getattr(ui, 'doubleSpinBox_kB' + suffix)),
         ]))
@@ -526,6 +526,9 @@ def apply_responsive_layout(ui, window):
     for name, hint in hints.items():
         getattr(ui, name).setToolTip(hint)
     for suffix in ['', '_old']:
+        getattr(ui, 'spinBox_coeff_dif_res' + suffix).setToolTip(
+            'Общий повышающий коэффициент цементограмм по производной и по функции. '
+            'По умолчанию 350; 0,003 по функции отображается как 1,05.')
         for index in range(1, 4):
             getattr(ui, 'pushButton_sum' + str(index) + suffix).setToolTip(
                 'Сложить отмеченные сигналы и записать результат в эту сумму.')

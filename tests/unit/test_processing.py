@@ -159,6 +159,27 @@ class HeadlessTests(unittest.TestCase):
                 table.loc[0, 'corr_sig'] = -1000
                 pd.testing.assert_frame_equal(measurements.signals, before)
 
+    def test_function_working_scale_is_linear_repeatable_and_keeps_classes(self):
+        raw = np.repeat([-.003, .001, .005], 40)
+        for equipment in ('new', 'old'):
+            measurements = MeasurementSet(equipment)
+            measurements.signals = pd.DataFrame({
+                'depth': np.arange(206, dtype=float), '1_rel_ampl': np.r_[np.zeros(86), raw],
+                '1_diff_result': np.arange(206, dtype=float), '1_func': np.ones(206)})
+            measurements.interval_min, measurements.interval_max = 86, 206
+            original = measurements.signals.copy(deep=True)
+            for scale in (350, 700, 350):
+                result = interpretation.prepare_cement(measurements, 1, source='rel_ampl', function_scale=scale)
+                np.testing.assert_allclose(result.corr_sig, raw * scale)
+                np.testing.assert_array_equal(result.func, np.ones(120))
+                for absolute in (True, False):
+                    expected = classify(pd.Series(raw), -.001, .003, absolute, QualityIntervals())
+                    actual = classify(result.corr_sig, -.001*scale, .003*scale, absolute, QualityIntervals())
+                    self.assertEqual(actual, expected)
+                derivative = interpretation.prepare_cement(measurements, 1, function_scale=scale)
+                np.testing.assert_array_equal(derivative.corr_sig, original['1_diff_result'].iloc[86:])
+                pd.testing.assert_frame_equal(measurements.signals, original)
+
     def test_readers_and_explicit_file_order(self):
         with tempfile.TemporaryDirectory(prefix='VAC кириллица ') as tmp:
             root = Path(tmp)

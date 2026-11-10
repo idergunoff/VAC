@@ -1,6 +1,7 @@
 """Interactive curves: explicit state, scalar display values, and a plot target."""
 import pyqtgraph as pg
 from vac.calculation import calc_max_int
+from vac.processing.interpretation import cement_curve
 
 
 def plot_graph_old(state, values, plot, n_sig, sig_width, sig_dash, color):
@@ -23,7 +24,8 @@ def plot_graph_old(state, values, plot, n_sig, sig_width, sig_dash, color):
         plot.plot(x=state.old.signals['depth'].iloc[state.old.interval_min:int_max_old].tolist(), y=state.old.signals[str(n_sig) + '_norm'].iloc[state.old.interval_min:int_max_old].tolist(), pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))
     if values['checkBox_rel_ampl_old.checkState'] == 2:
         int_max_old = calc_max_int(state.old.signals, state.old.statistics, n_sig, values['doubleSpinBox_int_max.value'])
-        plot.plot(x=state.old.signals['depth'].iloc[state.old.interval_min:int_max_old].tolist(), y=state.old.signals[str(n_sig) + '_rel_ampl'].iloc[state.old.interval_min:int_max_old].tolist(), pen=pg.mkPen(color='c', width=sig_width, dash=sig_dash))
+        curve = cement_curve(state.old, n_sig, 'rel_ampl', values['spinBox_coeff_dif_res_old.value'])
+        plot.plot(x=state.old.signals['depth'].iloc[state.old.interval_min:int_max_old].tolist(), y=curve.iloc[state.old.interval_min:int_max_old].tolist(), pen=pg.mkPen(color='c', width=sig_width, dash=sig_dash))
     if values['checkBox_diff_result_old.checkState'] == 2:
         int_max_old = calc_max_int(state.old.signals, state.old.statistics, n_sig, values['doubleSpinBox_int_max.value'])
         plot.plot(x=state.old.signals['depth'].iloc[state.old.interval_min:int_max_old].tolist(), y=state.old.signals[str(n_sig) + '_diff_result'].iloc[state.old.interval_min:int_max_old].tolist(), pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))
@@ -161,7 +163,8 @@ def plot_graph(state, values, plot, n_sig, sig_width, sig_dash, color):
         plot.plot(x=state.new.signals['depth'].iloc[state.new.interval_min:int_max].tolist(), y=state.new.signals[str(n_sig) + '_norm'].iloc[state.new.interval_min:int_max].tolist(), pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))
     if values['checkBox_rel_ampl.checkState'] == 2:
         int_max = calc_max_int(state.new.signals, state.new.statistics, n_sig, values['doubleSpinBox_int_max.value'])
-        plot.plot(x=state.new.signals['depth'].iloc[state.new.interval_min:int_max].tolist(), y=state.new.signals[str(n_sig) + '_rel_ampl'].iloc[state.new.interval_min:int_max].tolist(), pen=pg.mkPen(color='c', width=sig_width, dash=sig_dash))
+        curve = cement_curve(state.new, n_sig, 'rel_ampl', values['spinBox_coeff_dif_res.value'])
+        plot.plot(x=state.new.signals['depth'].iloc[state.new.interval_min:int_max].tolist(), y=curve.iloc[state.new.interval_min:int_max].tolist(), pen=pg.mkPen(color='c', width=sig_width, dash=sig_dash))
     if values['checkBox_diff_result.checkState'] == 2:
         int_max = calc_max_int(state.new.signals, state.new.statistics, n_sig, values['doubleSpinBox_int_max.value'])
         plot.plot(x=state.new.signals['depth'].iloc[state.new.interval_min:int_max].tolist(), y=state.new.signals[str(n_sig) + '_diff_result'].iloc[state.new.interval_min:int_max].tolist(), pen=pg.mkPen(color=(255, 255, color), width=sig_width, dash=sig_dash))

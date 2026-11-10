@@ -2554,7 +2554,7 @@
        <item row="2" column="2">
         <widget class="QDoubleSpinBox" name="doubleSpinBox_y_line">
          <property name="decimals">
-          <number>1</number>
+          <number>4</number>
          </property>
          <property name="minimum">
           <double>-10000.000000000000000</double>
@@ -2563,7 +2563,7 @@
           <double>10000.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.100000000000000</double>
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
@@ -3165,7 +3165,7 @@
        <item row="3" column="0">
         <widget class="QDoubleSpinBox" name="doubleSpinBox_defect1">
          <property name="decimals">
-          <number>1</number>
+          <number>4</number>
          </property>
          <property name="minimum">
           <double>-10000.000000000000000</double>
@@ -3174,14 +3174,14 @@
           <double>10000.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.100000000000000</double>
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
        <item row="3" column="1">
         <widget class="QDoubleSpinBox" name="doubleSpinBox_defect2">
          <property name="decimals">
-          <number>1</number>
+          <number>4</number>
          </property>
          <property name="minimum">
           <double>-10000.000000000000000</double>
@@ -3190,14 +3190,14 @@
           <double>10000.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.100000000000000</double>
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
        <item row="1" column="1">
         <widget class="QDoubleSpinBox" name="doubleSpinBox_max_cement">
          <property name="decimals">
-          <number>1</number>
+          <number>4</number>
          </property>
          <property name="minimum">
           <double>-10000.000000000000000</double>
@@ -3206,14 +3206,14 @@
           <double>10000.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.100000000000000</double>
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
        <item row="1" column="0">
         <widget class="QDoubleSpinBox" name="doubleSpinBox_min_cement">
          <property name="decimals">
-          <number>1</number>
+          <number>4</number>
          </property>
          <property name="minimum">
           <double>-10000.000000000000000</double>
@@ -3222,7 +3222,7 @@
           <double>10000.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.100000000000000</double>
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
