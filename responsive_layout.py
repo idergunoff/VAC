@@ -99,12 +99,88 @@ def _stack_controls(container):
             inner.setColumnStretch(0, 1)
 
 
+class Accordion(QtWidgets.QWidget):
+    """Exclusive sections with an optional fully collapsed state."""
+    def __init__(self):
+        super().__init__()
+        self.buttons = []
+        self.contents = []
+        self.index = -1
+        self.column = _column(self)
+        self.column.setContentsMargins(0, 0, 0, 0)
+        self.column.addStretch(1)
+        self.setStyleSheet("""
+            QToolButton[sectionHeader="true"] {
+                background-color: #e5ecef;
+                color: #344852;
+                border: 1px solid #c8d5db;
+                border-radius: 4px;
+                padding: 7px 9px;
+                text-align: left;
+            }
+            QToolButton[sectionHeader="true"]:checked {
+                background-color: #c8dce5;
+                border-color: #9bb9c8;
+            }
+            QToolButton[sectionHeader="true"]:hover {
+                border-color: #7f9eae;
+            }
+            QToolButton[sectionHeader="true"]:focus {
+                border: 2px solid #648797;
+            }
+        """)
+
+    def addItem(self, content, title):
+        index = self.count()
+        button = QtWidgets.QToolButton()
+        button.setProperty('sectionHeader', True)
+        button.setText(title)
+        button.setCheckable(True)
+        button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        button.setToolTip('Открыть раздел «' + title + '». Повторное нажатие сворачивает его.')
+        button.clicked.connect(lambda: self.setCurrentIndex(-1 if self.index == index else index))
+        area = _scroll(content)
+        self.column.insertWidget(self.column.count() - 1, button)
+        self.column.insertWidget(self.column.count() - 1, area)
+        self.buttons.append(button)
+        self.contents.append(area)
+        button.setArrowType(QtCore.Qt.RightArrow)
+        area.hide()
+        if index == 0:
+            self.setCurrentIndex(0)
+
+    def count(self):
+        return len(self.contents)
+
+    def currentIndex(self):
+        return self.index
+
+    def currentWidget(self):
+        return self.contents[self.index] if self.index >= 0 else None
+
+    def itemText(self, index):
+        return self.buttons[index].text()
+
+    def setCurrentIndex(self, index):
+        if not -1 <= index < self.count():
+            return
+        self.index = index
+        for number, (button, area) in enumerate(zip(self.buttons, self.contents)):
+            active = number == index
+            button.setChecked(active)
+            button.setArrowType(QtCore.Qt.DownArrow if active else QtCore.Qt.RightArrow)
+            area.setVisible(active)
+            self.column.setStretch(self.column.indexOf(area), 1 if active else 0)
+        self.column.setStretch(self.column.count() - 1, 1 if index == -1 else 0)
+
+
 class Workspace(QtWidgets.QWidget):
     """One expanded section uses all space between persistent section headers."""
     def __init__(self):
         super().__init__()
         layout = _column(self)
-        self.pages = QtWidgets.QToolBox()
+        self.pages = Accordion()
         self.pages.setToolTip('Нажмите заголовок, чтобы открыть раздел.')
         layout.addWidget(self.pages, 1)
         self.setMinimumWidth(320)
@@ -315,7 +391,7 @@ def apply_responsive_layout(ui, window):
     splitter.setCollapsible(1, False)
     splitter.setStretchFactor(0, 0)
     splitter.setStretchFactor(1, 1)
-    splitter.setSizes([320, 1000])
+    splitter.setSizes([380, 940])
     root.addWidget(splitter, 1)
     ui.responsiveSplitter = splitter
     ui.sidebarToggle.toggled.connect(ui.workspace.setVisible)

@@ -29,7 +29,7 @@ for width, height in [(800, 600), (1366, 768), (1920, 1080), (3200, 2000)]:
             app.processEvents()
         scroll = ui.workspace.pages.currentWidget()
         assert scroll.isVisible()
-        for area in scroll.findChildren(QtWidgets.QScrollArea):
+        for area in [scroll] + scroll.findChildren(QtWidgets.QScrollArea):
             if area.isVisible():
                 assert area.horizontalScrollBar().maximum() == 0, (width, section)
     ui.workspace.select(0)
@@ -37,6 +37,14 @@ for width, height in [(800, 600), (1366, 768), (1920, 1080), (3200, 2000)]:
         ui.equipmentTabs.setCurrentIndex(index)
         app.processEvents()
         assert ui.equipmentTabs.currentWidget().isVisible()
+        for _ in range(3):
+            app.processEvents()
+        assert ui.equipmentTabs.currentWidget().horizontalScrollBar().maximum() == 0
+    ui.workspace.pages.buttons[0].click()
+    app.processEvents()
+    assert ui.workspace.pages.currentIndex() == -1
+    assert all(button.isVisible() for button in ui.workspace.pages.buttons)
+    ui.workspace.select(0)
     plot_width = ui.graphicsView.width()
     ui.sidebarToggle.setChecked(False)
     app.processEvents()
