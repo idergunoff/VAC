@@ -1,6 +1,6 @@
 """Compact workspace assembled from Designer controls without changing identities.
 
-Sections are registered in a stack; new tools can be added without growing the
+Sections are registered in a vertical accordion; new tools can be added without growing the
 window. Calculation code continues to use the original controls and groups.
 """
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -46,7 +46,7 @@ def _group(title, widgets):
     layout = _column(group)
     for widget in widgets:
         layout.addWidget(widget)
-    return _fold(title, group) if title in ('PDF', 'Сравнение и вывод') else group
+    return group
 
 
 def _form(title, pairs):
@@ -58,7 +58,7 @@ def _form(title, pairs):
     layout.setRowWrapPolicy(QtWidgets.QFormLayout.WrapLongRows)
     for label, widget in pairs:
         layout.addRow(label, widget)
-    return _fold(title, group) if title in ('Обработка', 'Уровни дефектов') else group
+    return group
 
 
 def _stack_controls(container):
@@ -92,30 +92,29 @@ def _stack_controls(container):
                     button_name = widget.objectName().replace('checkBox', 'pushButton')
                     button = next((w for w in items if w.objectName() == button_name), None)
                     if button:
-                        button.setMaximumWidth(30)
+                        button.setText('Сложить')
+                        button.setMinimumWidth(76)
+                        button.setMaximumWidth(96)
                         inner.addWidget(button, row, 1)
             inner.setColumnStretch(0, 1)
 
 
 class Workspace(QtWidgets.QWidget):
-    """Sidebar navigation with independent scroll positions for each section."""
+    """One expanded section uses all space between persistent section headers."""
     def __init__(self):
         super().__init__()
         layout = _column(self)
-        self.navigation = QtWidgets.QComboBox()
-        self.navigation.setToolTip('Выберите раздел работы. Параметры других разделов сохраняются.')
-        self.pages = QtWidgets.QStackedWidget()
-        layout.addWidget(self.navigation)
+        self.pages = QtWidgets.QToolBox()
+        self.pages.setToolTip('Нажмите заголовок, чтобы открыть раздел.')
         layout.addWidget(self.pages, 1)
-        self.navigation.currentIndexChanged.connect(self.pages.setCurrentIndex)
-        self.setMinimumWidth(270)
+        self.setMinimumWidth(320)
 
     def add_section(self, title, content):
-        self.navigation.addItem(title)
-        self.pages.addWidget(_scroll(content))
+        content.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
+        self.pages.addItem(content, title)
 
     def select(self, index):
-        self.navigation.setCurrentIndex(index)
+        self.pages.setCurrentIndex(index)
 
 
 def apply_responsive_layout(ui, window):
@@ -183,6 +182,7 @@ def apply_responsive_layout(ui, window):
     ]:
         page = QtWidgets.QWidget()
         layout = _column(page)
+        layout.setContentsMargins(0, 0, 0, 0)
         loading = QtWidgets.QGroupBox(title + ' оборудование')
         loading_layout = _column(loading)
         buttons = QtWidgets.QHBoxLayout()
@@ -202,18 +202,19 @@ def apply_responsive_layout(ui, window):
         layout.addWidget(device)
         layout.addStretch()
         ui.equipmentTabs.addTab(_scroll(page), title)
-    data_layout.addWidget(ui.equipmentTabs)
+    data_layout.addWidget(ui.equipmentTabs, 1)
     loading_options = _group('Параметры загрузки', [_form('', [('Усреднение', ui.spinBox_mean)]), ui.pushButton_mean])
-    data_layout.addWidget(_fold('Параметры загрузки', loading_options))
-    data_layout.addStretch()
+    data_layout.addWidget(loading_options)
     ui.workspace.add_section('Данные', data)
 
     comparison = QtWidgets.QWidget()
     comparison_layout = _column(comparison)
+    comparison_layout.setContentsMargins(0, 0, 0, 0)
     processing_tabs = QtWidgets.QTabWidget()
     for suffix, title in [('', 'Новое'), ('_old', 'Старое')]:
         page = QtWidgets.QWidget()
         layout = _column(page)
+        layout.setContentsMargins(0, 0, 0, 0)
         names = ['checkBox_envelop', 'checkBox_mean', 'checkBox_func', 'checkBox_norm',
                  'checkBox_rel_ampl', 'checkBox_diff_result']
         if not suffix:
@@ -241,11 +242,10 @@ def apply_responsive_layout(ui, window):
             getattr(ui, 'pushButton_all_graphics' + suffix), getattr(ui, 'pushButton_all_cement' + suffix)]))
         layout.addStretch()
         processing_tabs.addTab(_scroll(page), title)
-    comparison_layout.addWidget(processing_tabs)
+    comparison_layout.addWidget(processing_tabs, 1)
     comparison_layout.addWidget(ui.pushButton_corr_matrix)
     comparison_layout.addWidget(ui.pushButton_choice_cement)
     comparison_layout.addWidget(ui.checkBox_abs_def)
-    comparison_layout.addStretch()
     ui.workspace.add_section('Сравнение', comparison)
 
     cement = QtWidgets.QWidget()
