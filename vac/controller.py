@@ -32,6 +32,8 @@ class Controller:
         self.archive_menu = ArchiveMenu(self)
         from .gui.workspace import WorkspaceActions
         self.workspace_actions = WorkspaceActions(self)
+        from .gui.curve_editor import CurveEditor
+        self.curve_editor = CurveEditor(self)
 
     def read_display_values(self, names):
         """Snapshot scalar display settings; widgets never enter rendering modules."""
@@ -589,6 +591,8 @@ class Controller:
 
 
     def choice_signal(self):
+        if hasattr(self, 'curve_editor'):
+            self.curve_editor.detach()
         if hasattr(self, 'workspace_actions'):
             self.workspace_actions.refresh_tooltips()
         plotting.choice_signal(self.state, self.read_display_values((
@@ -1107,7 +1111,9 @@ class Controller:
 
 
     def draw_cement(self):
-        plotting.draw_cement(self.state, self.read_display_values((
+        if hasattr(self, 'curve_editor'):
+            self.curve_editor.detach()
+        curve = plotting.draw_cement(self.state, self.read_display_values((
             'checkBox_corr_mode.checkState',
             'doubleSpinBox_defect1.value',
             'doubleSpinBox_defect2.value',
@@ -1117,6 +1123,8 @@ class Controller:
         )), self.ui.graphicsView)
         if hasattr(self, 'workspace_actions'):
             self.workspace_actions.refresh(show_cement=True)
+        if hasattr(self, 'curve_editor'):
+            self.curve_editor.attach(curve)
 
 
     def corr_sig(self):
