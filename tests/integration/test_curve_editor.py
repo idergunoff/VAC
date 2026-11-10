@@ -85,6 +85,85 @@ class CurveEditorTests(unittest.TestCase):
         self.ui.redoButton.click()
         pd.testing.assert_frame_equal(self.c.state.interpretation.table, after)
 
+    def test_drag_each_endpoint_previews_commits_and_undoes(self):
+        for index, bounds, pinned in [(0, (0., 3.), [3, 4]), (4, (1., 4.), [0, 1])]:
+            with self.subTest(index=index):
+                self.editor.set_bounds(*bounds)
+                self.mouse(QtCore.QEvent.MouseButtonPress, index, 1)
+                self.assertEqual(self.editor.anchor, index)
+                self.assertEqual(self.editor.gesture['kind'], 'curve')
+                self.mouse(QtCore.QEvent.MouseMove, index, 2)
+                pd.testing.assert_frame_equal(self.c.state.interpretation.table, self.source)
+                self.assertAlmostEqual(self.editor.curve.yData[index], 2., delta=.03)
+                self.mouse(QtCore.QEvent.MouseButtonRelease, index, 2)
+                after = self.c.state.interpretation.table.copy(deep=True)
+                self.assertAlmostEqual(after.corr_sig.iloc[index], 2., delta=.03)
+                np.testing.assert_array_equal(after.corr_sig.iloc[pinned], self.source.corr_sig.iloc[pinned])
+                self.assertEqual(len(self.c.workspace_actions.undo_stack), 1)
+                pd.testing.assert_frame_equal(self.c.state.interpretation.automatic_table, self.source)
+                self.ui.undoButton.click()
+                pd.testing.assert_frame_equal(self.c.state.interpretation.table, self.source)
+                self.ui.redoButton.click()
+                pd.testing.assert_frame_equal(self.c.state.interpretation.table, after)
+                self.ui.undoButton.click()
+
+    def test_endpoint_buttons_and_escape(self):
+        self.ui.curveStep.setValue(.25)
+        for index in (0, 4):
+            with self.subTest(index=index):
+                self.mouse(QtCore.QEvent.MouseButtonPress, index, 1)
+                self.mouse(QtCore.QEvent.MouseButtonRelease, index, 1)
+                self.assertEqual(self.editor.anchor, index)
+                self.assertEqual(len(self.c.workspace_actions.undo_stack), 0)
+                self.ui.raiseCurveButton.click()
+                self.assertEqual(self.c.state.interpretation.table.corr_sig.iloc[index], 1.25)
+                self.ui.lowerCurveButton.click()
+                np.testing.assert_array_equal(self.c.state.interpretation.table.corr_sig, self.source.corr_sig)
+                self.ui.undoButton.click()
+                self.ui.undoButton.click()
+                self.mouse(QtCore.QEvent.MouseButtonPress, index, 1)
+                self.mouse(QtCore.QEvent.MouseMove, index, 2)
+                QtTest.QTest.keyClick(self.window, QtCore.Qt.Key_Escape)
+                np.testing.assert_array_equal(self.editor.curve.yData, self.source.corr_sig)
+                self.assertIsNone(self.editor.gesture)
+                self.assertTrue(self.ui.redoButton.isEnabled())
+
+    def test_internal_bounds_are_pinned_and_retreating_from_edge_excludes_it(self):
+        self.editor.set_bounds(1., 3.)
+        np.testing.assert_array_equal(self.editor.candidates(), [2])
+        self.editor.set_bounds(0., 3.)
+        np.testing.assert_array_equal(self.editor.candidates(), [0, 1, 2])
+        self.editor.anchor = 0
+        self.editor.set_bounds(.01, 3.)
+        self.assertNotIn(0, self.editor.candidates())
+        self.assertNotEqual(self.editor.anchor, 0)
+        self.editor.set_bounds(0., 0.)
+        self.assertIsNone(self.editor.anchor)
+        self.assertFalse(self.ui.raiseCurveButton.isEnabled())
+
+    def test_mouse_selection_snaps_to_data_endpoints(self):
+        self.ui.selectInfluenceButton.click()
+        self.mouse(QtCore.QEvent.MouseButtonPress, 4., 5.)
+        self.mouse(QtCore.QEvent.MouseMove, 0., 5.)
+        self.mouse(QtCore.QEvent.MouseButtonRelease, 0., 5.)
+        self.assertEqual(self.editor.bounds, (0., 4.))
+        np.testing.assert_array_equal(self.editor.candidates(), np.arange(5))
+
+    def test_redraw_preserves_endpoints_beyond_spinbox_precision(self):
+        table = self.source.copy(deep=True)
+        table['depth'] += .000033
+        self.c.state.interpretation.table = table
+        self.c.draw_cement()
+        self.editor.set_bounds(float(table.depth.min()), float(table.depth.max()))
+        for index in (0, 4):
+            self.editor.anchor = index
+            self.c.draw_cement()
+            self.assertEqual(self.editor.bounds, (float(table.depth.min()), float(table.depth.max())))
+            self.assertEqual(self.editor.anchor, index)
+            self.ui.raiseCurveButton.click()
+            self.assertAlmostEqual(self.c.state.interpretation.table.corr_sig.iloc[index], 1.1)
+            self.ui.undoButton.click()
+
     def test_click_selects_any_interior_sample_and_buttons_accumulate(self):
         self.mouse(QtCore.QEvent.MouseButtonPress, 1, 2)
         self.mouse(QtCore.QEvent.MouseButtonRelease, 1, 2)

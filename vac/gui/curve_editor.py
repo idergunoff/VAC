@@ -4,7 +4,7 @@ import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ..domain.models import ManualCorrection
-from ..processing.corrections import local_shift, fix_corr
+from ..processing.corrections import local_shift, local_shift_candidates, fix_corr
 
 
 class CurveEditor(QtCore.QObject):
@@ -69,6 +69,11 @@ class CurveEditor(QtCore.QObject):
         self.limits = float(finite.min()), float(finite.max())
         low, high = self.limits
         left, right = self.ui.doubleSpinBox_x1_line.value(), self.ui.doubleSpinBox_x2_line.value()
+        # Spin boxes round depths for display; retain exact data endpoints on redraw.
+        if left == round(low, self.ui.doubleSpinBox_x1_line.decimals()):
+            left = low
+        if right == round(high, self.ui.doubleSpinBox_x2_line.decimals()):
+            right = high
         if self.bounds is None and not low <= left < right <= high:
             left, right = low + (high - low) * .25, low + (high - low) * .75
         self.set_bounds(left, right)
@@ -93,9 +98,7 @@ class CurveEditor(QtCore.QObject):
     def candidates(self):
         if self.table is None or self.bounds is None:
             return np.array([], dtype=int)
-        x = self.table['depth'].to_numpy(dtype=float)
-        y = self.table['corr_sig'].to_numpy(dtype=float)
-        return np.flatnonzero(np.isfinite(x) & np.isfinite(y) & (x > self.bounds[0]) & (x < self.bounds[1]))
+        return local_shift_candidates(self.table, *self.bounds)
 
     def choose_anchor(self):
         candidates = self.candidates()
@@ -142,7 +145,7 @@ class CurveEditor(QtCore.QObject):
         elif self.ui.selectInfluenceButton.isChecked():
             text = 'Протяните мышью по графику, чтобы выделить область влияния.'
         elif not has_anchor:
-            text = 'Расширьте область: внутри нужна хотя бы одна точка. Границы остаются неподвижными.'
+            text = 'Расширьте область: нужна точка внутри неё или на достигнутом краю графика.'
         else:
             y = self.table['corr_sig'].iloc[self.anchor]
             value = f'{y:.4g}'
@@ -174,6 +177,13 @@ class CurveEditor(QtCore.QObject):
         distance = np.abs(np.array(self.bounds) - point.x()) / abs(self.vb.viewPixelSize()[0])
         nearest = int(np.argmin(distance))
         return nearest if distance[nearest] <= 7 else None
+
+    def region_position(self, x):
+        """Snap pointer selection to a nearby data endpoint in screen pixels."""
+        for endpoint in self.limits:
+            if abs(x - endpoint) <= 7 * abs(self.vb.viewPixelSize()[0]):
+                return endpoint
+        return float(np.clip(x, *self.limits))
 
     def eventFilter(self, obj, event):
         # Python may already have cleared this wrapper during cyclic GC while
@@ -210,7 +220,7 @@ class CurveEditor(QtCore.QObject):
             else:
                 self.gesture = {'kind': 'region', 'bounds': self.bounds, 'anchor': self.anchor,
                                 'press_pos': event.pos(), 'moved': False,
-                                'edge': edge, 'start_x': float(np.clip(point.x(), *self.limits))}
+                                'edge': edge, 'start_x': self.region_position(point.x())}
             self.update_status()
             return True
         if self.gesture is not None:
@@ -246,10 +256,10 @@ class CurveEditor(QtCore.QObject):
         if gesture['kind'] == 'region':
             edge = gesture['edge']
             if edge is None:
-                self.set_bounds(gesture['start_x'], point.x())
+                self.set_bounds(gesture['start_x'], self.region_position(point.x()))
             else:
                 bounds = list(gesture['bounds'])
-                bounds[edge] = point.x()
+                bounds[edge] = self.region_position(point.x())
                 self.set_bounds(*bounds)
             return
         delta = point.y() - gesture['start_y']

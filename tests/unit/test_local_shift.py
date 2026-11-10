@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
 import pandas as pd
-from vac.processing.corrections import local_shift
+from vac.processing.corrections import local_shift, local_shift_candidates
 
 
 class LocalShiftTests(unittest.TestCase):
@@ -53,6 +53,38 @@ class LocalShiftTests(unittest.TestCase):
                      (0, 4, -1, 1), (0, np.inf, 2, 1), (0, 4, 2, np.nan)]:
             with self.subTest(args=args), self.assertRaises(ValueError):
                 local_shift(self.source, *args)
+
+    def test_both_endpoints_have_one_sided_falloff_without_division_by_zero(self):
+        for source in (self.source, self.source.iloc[::-1]):
+            for bounds, anchor, delta, expected in [
+                ((-1., 3.), -1., 4., [4., 3.375, 2., .625, 0., 0., 0.]),
+                ((1., 5.), 5., -4., [0., 0., 0., -.625, -2., -3.375, -4.]),
+            ]:
+                with self.subTest(anchor=anchor, descending=source.depth.iloc[0] == 5.):
+                    before = source.copy(deep=True)
+                    with np.errstate(divide='raise', invalid='raise'):
+                        result = local_shift(source, *bounds, anchor, delta)
+                    change = (result.corr_sig - source.corr_sig).sort_index()
+                    np.testing.assert_allclose(change, expected)
+                    pd.testing.assert_frame_equal(source, before)
+                    pd.testing.assert_frame_equal(result.drop(columns='corr_sig'), source.drop(columns='corr_sig'))
+
+    def test_candidates_only_release_true_endpoints_and_require_nonzero_width(self):
+        np.testing.assert_array_equal(local_shift_candidates(self.source, -1., 5.), np.arange(7))
+        np.testing.assert_array_equal(local_shift_candidates(self.source, 0., 4.), [2, 3, 4])
+        np.testing.assert_array_equal(local_shift_candidates(self.source, -1., -.5), [0])
+        for bounds in [(-1., -1.), (5., 5.), (5., -1.)]:
+            self.assertEqual(len(local_shift_candidates(self.source, *bounds)), 0)
+        missing = self.source.copy()
+        missing.iloc[0, missing.columns.get_loc('corr_sig')] = np.nan
+        np.testing.assert_array_equal(local_shift_candidates(missing, -1., 5.), np.arange(1, 7))
+        with self.assertRaises(ValueError):
+            local_shift(missing, -1., 5., -1., 2.)
+
+    def test_endpoint_with_no_interior_sample_and_repeated_edits(self):
+        raised = local_shift(self.source, -1., -.5, -1., 2.)
+        np.testing.assert_allclose(raised.corr_sig - self.source.corr_sig, [2., 0., 0., 0., 0., 0., 0.])
+        pd.testing.assert_frame_equal(local_shift(raised, -1., -.5, -1., -2.), self.source)
 
 
 if __name__ == '__main__':
