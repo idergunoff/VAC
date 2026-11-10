@@ -28,6 +28,7 @@ from vac.gui.archive import capture_widgets, blocked
 from vac.storage import Archive
 from vac.storage.backup import backup, restore
 from vac.reporting.template import TemplateStore, template_hash
+from vac.io.legacy_options import load_trusted
 
 
 @contextmanager
@@ -143,6 +144,9 @@ class ArchiveGuiTests(unittest.TestCase):
                 self.template_store.save(template_texts)
                 with patch.object(service, 'code_hash', return_value='different-report-program'):
                     menu.save_report(target)
+                options = load_trusted(target.parent / 'options_7.vac')
+                self.assertEqual(options['signal'], self.c.state.interpretation.table['corr_sig'].tolist())
+                self.assertEqual(options['doubleSpinBox_defect2'], self.c.ui.doubleSpinBox_defect2.value())
                 document = docx.Document(target)
                 self.assertEqual(document.paragraphs[1].text, template_texts['organization'])
                 self.assertEqual(document.tables[0].cell(0, 0).text, 'Исследование скважины 7')

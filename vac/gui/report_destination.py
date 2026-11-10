@@ -3,6 +3,11 @@ from pathlib import Path
 from PyQt5 import QtCore, QtWidgets
 
 
+def report_options_path(path, well):
+    name = str(well).replace('/', '_').replace('\\', '_')
+    return Path(path).with_name('options_' + name + '.vac')
+
+
 def report_settings():
     root = QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.GenericConfigLocation)
     return QtCore.QSettings(str(Path(root) / 'VAC' / 'report-output.ini'), QtCore.QSettings.IniFormat)

@@ -80,6 +80,7 @@ class WorkspaceActions:
             self.interpretation = self.c.state.interpretation
         ready = self.c.state.interpretation.table is not None
         ui.editButton.setEnabled(ready)
+        ui.alignReportButton.setEnabled(ready)
         ui.pushButton_save_cement.setEnabled(ready)
         ui.pushButton_save_cement.setToolTip('Выгрузить текущую цементограмму в Word.' if ready else
                                            'Сначала преобразуйте выбранный сигнал в цементограмму.')

@@ -14,7 +14,7 @@ from vac.calculation import calculate_new, calculate_old, classify, Classificati
 from vac.domain.models import QualityIntervals
 from .io import lvm, twf, exports, legacy_options
 from .gui import plotting
-from .gui.report_destination import choose_report_path, remember_report_path
+from .gui.report_destination import choose_report_path, remember_report_path, report_options_path
 from .reporting import figures, word
 from .processing import preprocessing, sums, pdf, interpretation, corrections
 
@@ -213,6 +213,7 @@ class Controller:
         self.ui.doubleSpinBox_defect1.valueChanged.connect(self.check_int_defect)
         self.ui.doubleSpinBox_defect2.valueChanged.connect(self.check_int_defect)
         self.ui.pushButton_minmax_cem.clicked.connect(self.calc_maxmin_cem)
+        self.ui.alignReportButton.clicked.connect(self.align_report)
         self.ui.doubleSpinBox_x1_line.valueChanged.connect(self.check_int_corr)
         self.ui.doubleSpinBox_x2_line.valueChanged.connect(self.check_int_corr)
         self.ui.doubleSpinBox_y_line.valueChanged.connect(self.draw_cement)
@@ -1245,7 +1246,14 @@ class Controller:
 
         exports.write_table(self.state.interpretation.table, 'result_cement.txt', sep='\t')
 
-        # словарь настроек для сохранения
+        self.capture_cement_options()
+
+    def capture_cement_options(self):
+        """Snapshot current scale, levels and edited curve without rendering."""
+        min_cement = self.ui.doubleSpinBox_min_cement.value()
+        max_cement = self.ui.doubleSpinBox_max_cement.value()
+        defect1 = self.ui.doubleSpinBox_defect1.value()
+        defect2 = self.ui.doubleSpinBox_defect2.value()
         self.state.interpretation.options = {}
         self.state.interpretation.options['doubleSpinBox_int_min'] = self.ui.doubleSpinBox_int_min.value()
         self.state.interpretation.options['doubleSpinBox_int_max'] = self.ui.doubleSpinBox_int_max.value()
@@ -1255,6 +1263,22 @@ class Controller:
         self.state.interpretation.options['doubleSpinBox_defect2'] = defect2
         self.state.interpretation.options['name_signal'] = self.ui.name_cement.text()
         self.state.interpretation.options['signal'] = self.state.interpretation.table['corr_sig'].tolist()
+        return self.state.interpretation.options
+
+    def save_report_options(self, path):
+        target = report_options_path(path, self.ui.lineEdit_number_skv.text())
+        legacy_options.save(target, self.capture_cement_options())
+        return target
+
+    def align_report(self):
+        if self.state.interpretation.table is None:
+            return
+        from .gui.report_alignment import ReportAlignmentDialog
+        dialog = ReportAlignmentDialog(self)
+        save = dialog.exec_() == QtWidgets.QDialog.Accepted and dialog.save_requested
+        dialog.deleteLater()
+        if save:
+            self.export_report()
 
 
     def check_int_corr(self):
@@ -1274,16 +1298,19 @@ class Controller:
     def calc_maxmin_cem(self):
         if self.state.interpretation.table is None:
             return
-        min_cem = self.ui.doubleSpinBox_min_cement.value()
-        max_cem = self.ui.doubleSpinBox_max_cement.value()
-        defect1 = self.ui.doubleSpinBox_defect1.value()
-        defect2 = self.ui.doubleSpinBox_defect2.value()
-        if (defect1 - min_cem) > (max_cem - defect2):
-            self.ui.doubleSpinBox_max_cement.setValue(defect2 + (defect1 - min_cem))
-            self.check_int_defect()
-        elif (defect1 - min_cem) < (max_cem - defect2):
-            self.ui.doubleSpinBox_min_cement.setValue(defect1 - (max_cem - defect2))
-            self.check_int_defect()
+        from .gui.report_alignment import centered_limits
+        try:
+            low, high = centered_limits(self.state.interpretation.table['corr_sig'],
+                self.ui.doubleSpinBox_defect1.value(), self.ui.doubleSpinBox_defect2.value())
+            if low < self.ui.doubleSpinBox_min_cement.minimum() or high > self.ui.doubleSpinBox_max_cement.maximum():
+                raise ValueError('Выбранный масштаб выходит за диапазон от −10000 до 10000.')
+        except ValueError as exc:
+            self.ui.label_info.setText(str(exc))
+            return
+        self.ui.doubleSpinBox_min_cement.setValue(low)
+        self.ui.doubleSpinBox_max_cement.setValue(high)
+        self.draw_cement()
+        self.ui.graphicsView.setYRange(low, high, padding=0)
 
 
     def check_int_defect_general(self):
@@ -1359,16 +1386,20 @@ class Controller:
         )), TEMPLATE_PATH, texts=texts)
         try:
             exports.write_document(doc, path)
-            remembered = remember_report_path(path)
-            self.ui.label_info.setText('Отчёт сохранён: ' + str(path) +
-                ('' if remembered else '. Не удалось запомнить папку для следующего сохранения.'))
-            self.ui.label_info.setStyleSheet('color:green')
         except OSError as exc:
             self.ui.label_info.setText('Не удалось сохранить отчёт: ' + str(exc))
             self.ui.label_info.setStyleSheet('color:red')
             return
-
-        legacy_options.save('options_' + self.ui.lineEdit_number_skv.text() + '.vac', self.state.interpretation.options)
+        try:
+            options_path = self.save_report_options(path)
+            remembered = remember_report_path(path)
+            self.ui.label_info.setText('Сохранены отчёт и настройки: ' + str(path) + ', ' + options_path.name +
+                ('' if remembered else '. Не удалось запомнить папку для следующего сохранения.'))
+            self.ui.label_info.setStyleSheet('color:green')
+        except OSError as exc:
+            self.ui.label_info.setText('Отчёт сохранён: ' + str(path) + '. Не удалось сохранить настройки: ' + str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
+            return
 
 
     def draw_total_cement(self, device, n_izm, n_graph, fig, count_sig):
@@ -1652,8 +1683,8 @@ class Controller:
         pos = evt[0]
         vb = self.ui.graphicsView.getPlotItem().vb
 
-        if self.ui.graphicsView.sceneBoundingRect().contains(pos):
+        if vb.sceneBoundingRect().contains(pos):
             mousePoint = vb.mapSceneToView(pos)
-            self.ui.label_x.setText(str(round(mousePoint.x(), 3)))
-            self.ui.label_y.setText(str(round(mousePoint.y(), 3)))
+            self.ui.label_x.setText(format(mousePoint.x(), '.3f'))
+            self.ui.label_y.setText(format(mousePoint.y(), '.3f'))
 

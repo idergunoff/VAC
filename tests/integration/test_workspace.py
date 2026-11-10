@@ -10,10 +10,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtTest
 from vac.app import create_window
 from vac.domain.models import SignalIdentity
+from vac.io.legacy_options import load_trusted
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -166,6 +168,51 @@ class WorkspaceTests(unittest.TestCase):
                 self.assertTrue(Path('temp.png').exists())
                 self.assertEqual(plt.get_fignums(), [])
                 self.assertIsNotNone(self.c.state.interpretation.options)
+            finally:
+                os.chdir(previous)
+
+    def test_cursor_coordinates_do_not_resize_plot_or_change_ranges(self):
+        for size in [(800, 600), (1366, 768)]:
+            self.window.resize(*size)
+            for _ in range(8):
+                self.app.processEvents()
+            plot = self.ui.graphicsView
+            vb = plot.getViewBox()
+            geometry, ranges = plot.geometry(), np.array(vb.viewRange())
+            for x, y in [(0., 1.), (1.123, 1.123), (2., 2.), (0., 0.), (1.001, 1.999)] * 3:
+                scene = vb.mapViewToScene(QtCore.QPointF(x, y))
+                QtTest.QTest.mouseMove(plot.viewport(), plot.mapFromScene(scene))
+                self.c.mouseMoved([scene])
+                for _ in range(6):
+                    self.app.processEvents()
+                self.assertEqual(plot.geometry(), geometry)
+                np.testing.assert_allclose(vb.viewRange(), ranges, rtol=0, atol=1e-10)
+
+    def test_report_settings_written_beside_docx_outside_working_directory(self):
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory(prefix='VAC настройки ') as tmp:
+            working = Path(tmp, 'рабочая папка')
+            destination = Path(tmp, 'финальный отчёт')
+            working.mkdir()
+            destination.mkdir()
+            try:
+                os.chdir(working)
+                self.ui.lineEdit_number_skv.setText('17/Б')
+                self.c.state.interpretation.table['corr_sig'] += .25
+                target = destination / 'заключение.docx'
+                with patch('vac.controller.choose_report_path', return_value=target):
+                    self.c.export_report()
+                self.assertTrue(target.exists())
+                options = load_trusted(destination / 'options_17_Б.vac')
+                self.assertEqual(options['signal'], self.c.state.interpretation.table['corr_sig'].tolist())
+                self.assertEqual(options['doubleSpinBox_defect1'], self.ui.doubleSpinBox_defect1.value())
+                self.assertFalse(list(working.glob('*.vac')))
+                with patch('vac.controller.choose_report_path', return_value=target), \
+                     patch('vac.controller.legacy_options.save', side_effect=PermissionError('занят')):
+                    self.c.export_report()
+                self.assertIn('Отчёт сохранён', self.ui.label_info.text())
+                self.assertIn('Не удалось сохранить настройки', self.ui.label_info.text())
+                self.assertIn('red', self.ui.label_info.styleSheet())
             finally:
                 os.chdir(previous)
 

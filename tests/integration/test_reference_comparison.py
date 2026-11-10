@@ -65,6 +65,48 @@ class ReferenceComparisonTests(unittest.TestCase):
         self.assertIsNotNone(self.c.curve_editor.curve)
         self.assertIsNone(self.ui.graphicsView.getPlotItem().legend)
 
+    def test_every_individual_channel_and_sum_can_be_compared(self):
+        for equipment, count in [('new', 11), ('old', 15)]:
+            device = getattr(self.c.state, equipment)
+            data = {'depth': [10., 11., 12.]}
+            data.update({str(n) + '_envelope' if equipment == 'new' else n:
+                         [n, n + .1, n + .2] for n in range(1, count + 1)})
+            device.signals = pd.DataFrame(data)
+            device.interval_min, device.interval_max = 1, 3
+            before = device.signals.copy(deep=True)
+            self.c.reference_comparison.open(equipment)
+            for channel in range(1, count + 1):
+                with self.subTest(equipment=equipment, channel=channel):
+                    index = self.ui.referenceFrequency.findData(channel)
+                    self.assertGreaterEqual(index, 3)
+                    self.ui.referenceFrequency.setCurrentIndex(index)
+                    curves = self.ui.graphicsView.listDataItems()
+                    self.assertEqual(len(curves), 3)
+                    np.testing.assert_allclose(curves[0].yData, [channel + .1, channel + .2])
+                    np.testing.assert_allclose(curves[0].xData, [11., 12.])
+                    self.ui.referenceSelection.setCurrentIndex(1)
+                    self.assertEqual(len(self.ui.graphicsView.listDataItems()), 2)
+                    np.testing.assert_allclose(self.ui.graphicsView.listDataItems()[0].yData,
+                                               [channel + .1, channel + .2])
+                    self.ui.referenceSelection.setCurrentIndex(0)
+            pd.testing.assert_frame_equal(device.signals, before)
+        # Switching equipment drops a selection that no longer exists.
+        self.ui.referenceDevice.setCurrentIndex(0)
+        self.assertEqual(self.ui.referenceFrequency.currentData(), 'both')
+        self.c.state.new.signals = pd.DataFrame()
+        self.c.reference_comparison.redraw()
+        self.assertEqual(self.ui.referenceFrequency.count(), 3)
+        self.assertEqual(len(self.ui.graphicsView.listDataItems()), 2)
+
+    def test_comparison_controls_fit_compact_window(self):
+        self.window.resize(800, 600)
+        self.window.show()
+        self.c.reference_comparison.open('new')
+        for _ in range(10):
+            self.app.processEvents()
+        self.assertEqual(self.window.width(), 800)
+        self.assertGreater(self.ui.graphicsView.width(), 360)
+
 
 if __name__ == '__main__':
     unittest.main()
