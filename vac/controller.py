@@ -30,6 +30,8 @@ class Controller:
         self.bind_signals()
         from .gui.archive import ArchiveMenu
         self.archive_menu = ArchiveMenu(self)
+        from .gui.template_editor import TemplateMenu
+        self.template_menu = TemplateMenu(self)
         from .gui.workspace import WorkspaceActions
         self.workspace_actions = WorkspaceActions(self)
         from .gui.curve_editor import CurveEditor
@@ -1277,13 +1279,17 @@ class Controller:
 
 
     def cement_temp(self):
-        # Работа с шаблоном Word
-        doc = docx.Document(TEMPLATE_PATH)
-        table = doc.tables[0]
-        self.ui.lineEdit_pipe_diameter.setText(table.rows[1].cells[0].paragraphs[0].runs[3].text)
-        self.ui.lineEdit_client.setText(table.rows[2].cells[0].paragraphs[0].runs[1].text)
-        self.ui.lineEdit_client2.setText(table.rows[3].cells[0].paragraphs[0].text)
-        self.ui.lineEdit_interpreter.setText(table.rows[9].cells[2].paragraphs[0].text)
+        from .reporting.template import default_texts
+        try:
+            texts = default_texts() | self.template_menu.store.load()
+        except (ValueError, OSError) as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
+            return
+        self.ui.lineEdit_pipe_diameter.setText(texts['default_diameter'])
+        self.ui.lineEdit_client.setText(texts['default_client'])
+        self.ui.lineEdit_client2.setText(texts['default_client2'])
+        self.ui.lineEdit_interpreter.setText(texts['default_interpreter'])
 
 
     def export_report(self):
@@ -1295,6 +1301,12 @@ class Controller:
 
     def save_cement(self):
         if self.state.interpretation.table is None:
+            return
+        try:
+            texts = self.template_menu.store.load()
+        except (ValueError, OSError) as exc:
+            self.ui.label_info.setText(str(exc))
+            self.ui.label_info.setStyleSheet('color:red')
             return
         """ Сохранение результирующей цементограммы в отчет в документ Word по шаблону 'template.docx' """
         fields = []
@@ -1314,7 +1326,7 @@ class Controller:
             'lineEdit_interpreter.text',
             'lineEdit_number_skv.text',
             'lineEdit_pipe_diameter.text',
-        )), TEMPLATE_PATH)
+        )), TEMPLATE_PATH, texts=texts)
         try:
             exports.write_document(doc, 'цементограмма_по_скв_' + self.ui.lineEdit_number_skv.text() + '.docx')
             self.ui.label_info.setText('Результат сохранён в файл "цементограмма_по_скв_' + self.ui.lineEdit_number_skv.text() +

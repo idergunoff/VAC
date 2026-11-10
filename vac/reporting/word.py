@@ -4,9 +4,12 @@ from pathlib import Path
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from copy import deepcopy
+from .template import apply_texts, validate_texts
 
 
-def build_report(table_data, frequency, values, template, image_path='temp.png'):
+def build_report(table_data, frequency, values, template, image_path='temp.png', *, texts=None):
+    texts = {} if texts is None else texts
+    validate_texts(texts)
     doc = docx.Document(template)
     table = doc.tables[0]
     table2 = doc.tables[1]
@@ -169,6 +172,7 @@ def build_report(table_data, frequency, values, template, image_path='temp.png')
     else:
         k_def = 1 - h_def / int_study
     table.rows[7].cells[0].paragraphs[0].runs[7].text = str(round(k_def, 1))
+    apply_texts(doc, texts)
     if table_data['depth'].max() > 400:
         new_tbl = deepcopy(table._tbl)
         table._tbl.addnext(new_tbl)
