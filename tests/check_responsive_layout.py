@@ -25,9 +25,13 @@ for width, height in [(800, 600), (1366, 768), (1920, 1080), (3200, 2000)]:
     for section in range(ui.workspace.pages.count()):
         ui.workspace.select(section)
         app.processEvents()
+        for _ in range(3):
+            app.processEvents()
         scroll = ui.workspace.pages.currentWidget()
         assert scroll.isVisible()
-        assert scroll.horizontalScrollBar().maximum() == 0, (width, section)
+        for area in scroll.findChildren(QtWidgets.QScrollArea):
+            if area.isVisible():
+                assert area.horizontalScrollBar().maximum() == 0, (width, section)
     ui.workspace.select(0)
     for index in range(ui.equipmentTabs.count()):
         ui.equipmentTabs.setCurrentIndex(index)
