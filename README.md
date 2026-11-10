@@ -5,12 +5,15 @@
 
 ## Установка и запуск
 
-Python **3.12, 64 бит**. Зависимости закреплены в `requirements.txt`.
+CPython **3.11–3.14, 64 бит** (обычная сборка с GIL).
+Одинаковые версии зависимостей для этих версий Python закреплены в
+`requirements.txt`; NumPy, pandas, SciPy и matplotlib имеют готовые пакеты
+для Windows x64 и Linux.
 
 Windows, PowerShell из корня проекта:
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install .
 .\.venv\Scripts\python.exe -m vac
 ```
@@ -18,10 +21,23 @@ py -3.12 -m venv .venv
 Linux:
 
 ```sh
-python3.12 -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/python -m pip install .
 .venv/bin/python -m vac
 ```
+
+Для Python 3.11 замените `3.14` на `3.11` в команде создания окружения.
+Если `.venv` уже создано нужной версией Python, обновите проект из его корня:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m pip check
+```
+
+При смене версии Python создайте новое виртуальное окружение и выберите его
+интерпретатор в PyCharm. Установка NumPy отдельно не отменяет закрепление
+зависимостей проекта.
 
 Для разработки: `python -m pip install -e .`. После установки `python -m vac`
 или `vac` запускается из любого каталога. `VAC_python.py` и
@@ -32,8 +48,10 @@ python3.12 -m venv .venv
 `libxkbcommon-x11-0`, `libxcb-xinerama0` и библиотеки XCB.
 Проверки без рабочего стола выполняются на Linux; они не заменяют визуальную
 проверку GUI, шрифтов, масштабирования и Word на Windows и Linux.
-Полный снимок проверенного Linux-окружения: `docs/requirements-linux-py312.lock.txt`.
-Переносимость этого снимка на Windows не проверена.
+Исторический снимок Linux-окружения с NumPy 1.26.4:
+`docs/requirements-linux-py312.lock.txt`. Он сохранён для воспроизведения прежней
+среды Python 3.12; для текущей установки используйте зависимости проекта,
+а не этот снимок.
 
 [Компактный интерфейс и управление](docs/interface.md)
 

@@ -18,7 +18,7 @@ from vac.domain.models import MeasurementSet, ProcessingParameters, QualityInter
 from vac.io import lvm, twf
 from vac.processing import preprocessing, corrections, interpretation, pdf, sums
 from vac.services.analysis import analyze
-from test_calculation import read_table
+from test_calculation import read_table, assert_fixture_signal
 
 FIXTURES = ROOT / 'tests/fixtures/processing'
 
@@ -62,7 +62,7 @@ class HeadlessTests(unittest.TestCase):
                             actual = result.measurements
                             self.assertEqual(list(actual.signals), list(expected))
                             for col in expected:
-                                np.testing.assert_allclose(actual.signals[col], expected[col], rtol=1e-12, atol=1e-12, equal_nan=True, err_msg=str(col))
+                                assert_fixture_signal(actual.signals[col], expected[col], col)
                             pd.testing.assert_frame_equal(actual.statistics, expected_stats)
                             pd.testing.assert_frame_equal(source.signals, original_signals)
                             pd.testing.assert_frame_equal(source.statistics, original_stats)
@@ -86,7 +86,11 @@ class HeadlessTests(unittest.TestCase):
                 for _ in range(2):
                     measurements.signals = source.copy(deep=True)
                     pdf.calculate_pdf(measurements, parameters, [1, 2, 3])
-                    pd.testing.assert_frame_equal(measurements.signals, expected, check_exact=False, rtol=1e-12, atol=1e-12)
+                    fitted = ['pdf_func', 'pdf_rel_ampl']
+                    pd.testing.assert_frame_equal(measurements.signals.drop(columns=fitted), expected.drop(columns=fitted),
+                                                  check_exact=False, rtol=1e-12, atol=1e-12)
+                    pd.testing.assert_frame_equal(measurements.signals[fitted], expected[fitted],
+                                                  check_exact=False, rtol=1e-8, atol=1e-10)
                 with self.assertRaises(ValueError):
                     pdf.calculate_pdf(measurements, parameters, [1])
 

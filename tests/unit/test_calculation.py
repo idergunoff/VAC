@@ -12,6 +12,17 @@ from vac.domain.models import MeasurementSet, ProcessingParameters, QualityInter
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def assert_fixture_signal(actual, expected, column):
+    # Only curve_fit outputs and their derivatives vary with NumPy/SciPy/BLAS.
+    fitted = str(column).endswith(('_func', '_func_kdamp', '_rel_ampl'))
+    if str(column).endswith(('_quality', '_qual_mean')):
+        np.testing.assert_array_equal(actual, expected, err_msg=str(column))
+    else:
+        np.testing.assert_allclose(actual, expected, rtol=1e-8 if fitted else 1e-12,
+                                   atol=1e-10 if fitted else 1e-12,
+                                   equal_nan=True, err_msg=str(column))
+
+
 def read_table(directory, name):
     info = json.loads((directory / 'tables.json').read_text())[name]
     result = pd.DataFrame(index=info['index'])
@@ -54,7 +65,7 @@ class CalculationTests(unittest.TestCase):
                 for _ in range(2):
                     calculate(measurements, params)
                     for col in measurements.signals:
-                        np.testing.assert_allclose(measurements.signals[col], expected[col], rtol=1e-12, atol=1e-12, equal_nan=True)
+                        assert_fixture_signal(measurements.signals[col], expected[col], col)
                     pd.testing.assert_frame_equal(measurements.statistics, expected_stats)
                     pd.testing.assert_frame_equal(measurements.original, raw)
 
