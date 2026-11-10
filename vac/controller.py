@@ -14,6 +14,7 @@ from vac.calculation import calculate_new, calculate_old, classify, Classificati
 from vac.domain.models import QualityIntervals
 from .io import lvm, twf, exports, legacy_options
 from .gui import plotting
+from .gui.report_destination import choose_report_path, remember_report_path
 from .reporting import figures, word
 from .processing import preprocessing, sums, pdf, interpretation, corrections
 
@@ -1295,13 +1296,20 @@ class Controller:
     def export_report(self):
         if self.state.interpretation.table is None:
             return
+        path = choose_report_path(self.window, self.ui.lineEdit_number_skv.text())
+        if path is None:
+            return
         self.cementogramma(show=False)
-        self.save_cement()
+        self.save_cement(path)
 
 
-    def save_cement(self):
+    def save_cement(self, path=None):
         if self.state.interpretation.table is None:
             return
+        if path is None:
+            path = choose_report_path(self.window, self.ui.lineEdit_number_skv.text())
+            if path is None:
+                return
         try:
             texts = self.template_menu.store.load()
         except (ValueError, OSError) as exc:
@@ -1328,14 +1336,15 @@ class Controller:
             'lineEdit_pipe_diameter.text',
         )), TEMPLATE_PATH, texts=texts)
         try:
-            exports.write_document(doc, 'цементограмма_по_скв_' + self.ui.lineEdit_number_skv.text() + '.docx')
-            self.ui.label_info.setText('Результат сохранён в файл "цементограмма_по_скв_' + self.ui.lineEdit_number_skv.text() +
-                                    '.docx"')
+            exports.write_document(doc, path)
+            remembered = remember_report_path(path)
+            self.ui.label_info.setText('Отчёт сохранён: ' + str(path) +
+                ('' if remembered else '. Не удалось запомнить папку для следующего сохранения.'))
             self.ui.label_info.setStyleSheet('color:green')
-        except PermissionError:
-            self.ui.label_info.setText('Сохранение невозможно! Закройте файл "цементограмма_по_скв_' +
-                                    self.ui.lineEdit_number_skv.text() + '.docx"')
+        except OSError as exc:
+            self.ui.label_info.setText('Не удалось сохранить отчёт: ' + str(exc))
             self.ui.label_info.setStyleSheet('color:red')
+            return
 
         legacy_options.save('options_' + self.ui.lineEdit_number_skv.text() + '.vac', self.state.interpretation.options)
 
