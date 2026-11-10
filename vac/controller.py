@@ -34,6 +34,8 @@ class Controller:
         self.workspace_actions = WorkspaceActions(self)
         from .gui.curve_editor import CurveEditor
         self.curve_editor = CurveEditor(self)
+        from .gui.reference_comparison import ReferenceComparison
+        self.reference_comparison = ReferenceComparison(self)
 
     def read_display_values(self, names):
         """Snapshot scalar display settings; widgets never enter rendering modules."""
@@ -591,6 +593,9 @@ class Controller:
 
 
     def choice_signal(self):
+        if hasattr(self, "reference_comparison") and self.reference_comparison.active:
+            self.reference_comparison.redraw()
+            return
         if hasattr(self, 'curve_editor'):
             self.curve_editor.detach()
         if hasattr(self, 'workspace_actions'):
@@ -1111,6 +1116,8 @@ class Controller:
 
 
     def draw_cement(self):
+        if hasattr(self, "reference_comparison"):
+            self.reference_comparison.leave()
         if hasattr(self, 'curve_editor'):
             self.curve_editor.detach()
         curve = plotting.draw_cement(self.state, self.read_display_values((
@@ -1370,15 +1377,10 @@ class Controller:
 
 
     def draw_graphics(self):
-        figures.draw_graphics(self.state, self.read_display_values((
-            'checkBox_gen_def_new.checkState',
-        )))
-
+        self.reference_comparison.open('new')
 
     def draw_graphics_old(self):
-        figures.draw_graphics_old(self.state, self.read_display_values((
-            'checkBox_gen_def_old.checkState',
-        )))
+        self.reference_comparison.open('old')
 
 
     def choice_cement(self):
