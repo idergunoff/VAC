@@ -14,4 +14,5 @@ def load_trusted(path):
 
 def save(path, options):
     with open(path, 'wb') as stream:
-        pickle.dump(options, stream)
+        # Python 3.14 defaults to protocol 5; legacy VAC files use protocol 4.
+        pickle.dump(options, stream, protocol=4)

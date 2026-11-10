@@ -7,7 +7,7 @@ name = "vac-cementometry"
 version = "0.2.0"
 description = "Desktop vibroacoustic cementometry interpretation"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11,<3.15"
 dynamic = ["dependencies"]
 
 [project.scripts]

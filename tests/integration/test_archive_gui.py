@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / 'tests/unit')]
-from test_calculation import read_table
+from test_calculation import read_table, assert_fixture_signal
 from vac.app import create_window
 from vac.services import archive as service
 from vac.gui.archive import capture_widgets, blocked
@@ -90,7 +90,7 @@ class ArchiveGuiTests(unittest.TestCase):
                 expected = read_table(baseline, 'all_signals' + suffix)
                 actual = getattr(self.c.state, equipment)
                 for col in expected:
-                    np.testing.assert_allclose(actual.signals[col], expected[col], rtol=1e-12, atol=1e-12, equal_nan=True, err_msg=str(col))
+                    assert_fixture_signal(actual.signals[col], expected[col], col)
                 checkbox = self.c.ui.checkBox_signal1 if equipment == 'new' else self.c.ui.checkBox_signal_old_1
                 checkbox.setChecked(True)
                 self.c.calc_int_cement()
