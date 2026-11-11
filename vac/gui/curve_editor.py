@@ -34,6 +34,7 @@ class CurveEditor(QtCore.QObject):
     @property
     def active(self):
         return (self.curve is not None and self.ui.editButton.isChecked()
+                and not self.ui.sourceSignalButton.isChecked()
                 and self.table is not None and not self.table.empty and 'corr_sig' in self.table)
 
     @property

@@ -9,7 +9,8 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from PyQt5 import QtCore, QtWidgets
-from vac.gui.report_destination import choose_report_path, remember_report_path
+from vac.gui.report_destination import (choose_report_path, remember_report_path,
+                                       choose_options_path, remember_options_path)
 from vac.app import create_window
 
 
@@ -50,3 +51,30 @@ class DestinationTests(unittest.TestCase):
                 save.assert_not_called()
         finally:
             window.close()
+
+    def test_options_destination_extension_overwrite_and_separate_directory(self):
+        with tempfile.TemporaryDirectory(prefix='VAC настройки ') as tmp:
+            factory = lambda: QtCore.QSettings(str(Path(tmp, 'settings.ini')), QtCore.QSettings.IniFormat)
+            with patch('vac.gui.report_destination.report_settings', side_effect=factory):
+                report = Path(tmp, 'отчёты')
+                options = Path(tmp, 'настройки')
+                report.mkdir()
+                options.mkdir()
+                remember_report_path(report / 'отчёт.docx')
+                with patch.object(QtWidgets.QFileDialog, 'getSaveFileName', return_value=('', '')) as dialog:
+                    self.assertIsNone(choose_options_path(None, '17'))
+                    self.assertEqual(Path(dialog.call_args.args[2]).parent, report)
+                remember_options_path(options / 'настройки.vac')
+                with patch.object(QtWidgets.QFileDialog, 'getSaveFileName', return_value=('', '')) as dialog:
+                    self.assertIsNone(choose_options_path(None, '17/Б'))
+                    self.assertEqual(Path(dialog.call_args.args[2]), options / 'options_17_Б.vac')
+                self.assertEqual(factory().value('directory'), str(report))
+                target = options / 'правки.vac'
+                with patch.object(QtWidgets.QFileDialog, 'getSaveFileName', return_value=(str(target.with_suffix('')), '')):
+                    self.assertEqual(choose_options_path(None, '17'), target)
+                    target.write_bytes(b'original')
+                    with patch.object(QtWidgets.QMessageBox, 'question', return_value=QtWidgets.QMessageBox.No):
+                        self.assertIsNone(choose_options_path(None, '17'))
+                    self.assertEqual(target.read_bytes(), b'original')
+                    with patch.object(QtWidgets.QMessageBox, 'question', return_value=QtWidgets.QMessageBox.Yes):
+                        self.assertEqual(choose_options_path(None, '17'), target)
