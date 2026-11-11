@@ -14,7 +14,8 @@ from vac.calculation import calculate_new, calculate_old, classify, Classificati
 from vac.domain.models import QualityIntervals
 from .io import lvm, twf, exports, legacy_options
 from .gui import plotting
-from .gui.report_destination import choose_report_path, remember_report_path, report_options_path
+from .gui.report_destination import (choose_report_path, remember_report_path, report_options_path,
+                                     choose_options_path, remember_options_path)
 from .reporting import figures, word
 from .processing import preprocessing, sums, pdf, interpretation, corrections
 
@@ -37,6 +38,8 @@ class Controller:
         self.workspace_actions = WorkspaceActions(self)
         from .gui.curve_editor import CurveEditor
         self.curve_editor = CurveEditor(self)
+        from .gui.source_signal import SourceSignalView
+        self.source_signal = SourceSignalView(self)
         from .gui.reference_comparison import ReferenceComparison
         self.reference_comparison = ReferenceComparison(self)
 
@@ -232,6 +235,7 @@ class Controller:
         self.ui.pushButton_from_temp.clicked.connect(self.cement_temp)
         self.ui.pushButton_save_cement.clicked.connect(self.export_report)
         self.ui.pushButton_open_options.clicked.connect(self.open_options)
+        self.ui.saveOptionsButton.clicked.connect(self.save_options)
 
         self.ui.pushButton_all_cement.clicked.connect(self.all_cement)
         self.ui.pushButton_all_cement_old.clicked.connect(self.all_cement_old)
@@ -598,6 +602,8 @@ class Controller:
 
 
     def choice_signal(self):
+        if hasattr(self, 'source_signal'):
+            self.source_signal.leave()
         if hasattr(self, "reference_comparison") and self.reference_comparison.active:
             self.reference_comparison.redraw()
             return
@@ -1142,6 +1148,8 @@ class Controller:
 
 
     def draw_cement(self):
+        if hasattr(self, 'source_signal'):
+            self.source_signal.leave()
         if hasattr(self, "reference_comparison"):
             self.reference_comparison.leave()
         if hasattr(self, 'curve_editor'):
@@ -1269,6 +1277,24 @@ class Controller:
         target = report_options_path(path, self.ui.lineEdit_number_skv.text())
         legacy_options.save(target, self.capture_cement_options())
         return target
+
+    def save_options(self):
+        """Save the same settings as the report, without rendering or exporting it."""
+        if self.state.interpretation.table is None:
+            return
+        path = choose_options_path(self.window, self.ui.lineEdit_number_skv.text())
+        if path is None:
+            return
+        try:
+            legacy_options.save(path, self.capture_cement_options())
+        except OSError as exc:
+            self.ui.label_info.setStyleSheet('color:red')
+            self.ui.label_info.setText('Не удалось сохранить настройки: ' + str(exc))
+            return
+        remembered = remember_options_path(path)
+        self.ui.label_info.setStyleSheet('color:green')
+        self.ui.label_info.setText('Настройки сохранены: ' + str(path) +
+            ('' if remembered else '. Не удалось запомнить папку для следующего сохранения.'))
 
     def align_report(self):
         if self.state.interpretation.table is None:

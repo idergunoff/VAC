@@ -216,6 +216,52 @@ class WorkspaceTests(unittest.TestCase):
             finally:
                 os.chdir(previous)
 
+    def test_separate_settings_save_matches_report_settings_without_rendering(self):
+        self.ui.editButton.click()
+        self.ui.pushButton_plus_func.click()
+        self.ui.lineEdit_number_skv.setText('17/Б')
+        edited = self.c.state.interpretation.table.copy(deep=True)
+        history = len(self.c.workspace_actions.undo_stack)
+        with tempfile.TemporaryDirectory(prefix='VAC отдельно настройки ') as tmp:
+            target = Path(tmp, 'только настройки.vac')
+            with patch('vac.controller.choose_options_path', return_value=target), \
+                 patch('vac.controller.remember_options_path', return_value=True), \
+                 patch.object(self.c, 'cementogramma') as render, \
+                 patch.object(self.c, 'save_cement') as report:
+                self.ui.saveOptionsButton.click()
+                render.assert_not_called()
+                report.assert_not_called()
+            saved = load_trusted(target)
+            self.assertEqual(saved['signal'], edited['corr_sig'].tolist())
+            self.assertEqual(saved, self.c.capture_cement_options())
+            report_path = self.c.save_report_options(Path(tmp, 'отчёт.docx'))
+            self.assertEqual(saved, load_trusted(report_path))
+            self.assertEqual(sorted(p.suffix for p in Path(tmp).iterdir()), ['.vac', '.vac'])
+            self.assertEqual(len(self.c.workspace_actions.undo_stack), history)
+            self.assertTrue(self.ui.editButton.isChecked())
+            pd.testing.assert_frame_equal(self.c.state.interpretation.table, edited)
+            self.assertIn('Настройки сохранены', self.ui.label_info.text())
+
+    def test_separate_settings_cancel_and_write_failure_preserve_edits(self):
+        self.ui.editButton.click()
+        self.ui.pushButton_plus_func.click()
+        before = self.c.state.interpretation.table.copy(deep=True)
+        with patch('vac.controller.choose_options_path', return_value=None), \
+             patch('vac.controller.legacy_options.save') as save:
+            self.ui.saveOptionsButton.click()
+            save.assert_not_called()
+        with patch('vac.controller.choose_options_path', return_value=Path('settings.vac')), \
+             patch('vac.controller.legacy_options.save', side_effect=PermissionError('занят')), \
+             patch('vac.controller.remember_options_path') as remember:
+            self.ui.saveOptionsButton.click()
+            remember.assert_not_called()
+        self.assertIn('Не удалось сохранить настройки', self.ui.label_info.text())
+        pd.testing.assert_frame_equal(self.c.state.interpretation.table, before)
+        self.assertTrue(self.ui.undoButton.isEnabled())
+        self.c.clear_interpretation()
+        self.assertFalse(self.ui.saveOptionsButton.isEnabled())
+        self.assertFalse(self.ui.saveOptionsAction.isEnabled())
+
 
 if __name__ == '__main__':
     unittest.main()

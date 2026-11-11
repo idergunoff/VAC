@@ -335,6 +335,13 @@ def apply_responsive_layout(ui, window):
         'Построить цементограмму по отклонению от функции затухания '
         'для редактирования и выгрузки отчёта.')
     cement_layout.addWidget(ui.pushButton_cement_func)
+    ui.sourceSignalButton = QtWidgets.QPushButton('Исходный сигнал')
+    ui.sourceSignalButton.setObjectName('sourceSignalButton')
+    ui.sourceSignalButton.setCheckable(True)
+    ui.sourceSignalButton.setToolTip(
+        'Посмотреть сигнал текущей цементограммы без сброса правок. '
+        'Повторное нажатие возвращает к редактированию.')
+    cement_layout.addWidget(ui.sourceSignalButton)
     cement_scale = _form('Масштаб и дефекты', [
         ('Минимум', ui.doubleSpinBox_min_cement), ('Максимум', ui.doubleSpinBox_max_cement),
         ('Дефект 1', ui.doubleSpinBox_defect1), ('Дефект 2', ui.doubleSpinBox_defect2),
@@ -405,6 +412,10 @@ def apply_responsive_layout(ui, window):
         'и подобрать масштаб по всей отредактированной кривой с запасом 10%.')
     cement_layout.addWidget(ui.pushButton_minmax_cem)
     cement_layout.addWidget(ui.pushButton_cement)
+    ui.saveOptionsButton = QtWidgets.QPushButton('Сохранить настройки…')
+    ui.saveOptionsButton.setObjectName('saveOptionsButton')
+    ui.saveOptionsButton.setToolTip('Сохранить текущие настройки и правки в .vac без создания отчёта.')
+    cement_layout.addWidget(ui.saveOptionsButton)
     cement_layout.addStretch()
     ui.workspace.add_section('Цементограмма', cement)
 
@@ -455,7 +466,9 @@ def apply_responsive_layout(ui, window):
     plot_layout.addWidget(ui.referenceControls)
     ui.referenceControls.hide()
     ui.graphicsView.setMinimumSize(200, 120)
-    plot_layout.addWidget(ui.graphicsView, 1)
+    ui.plotStack = QtWidgets.QStackedWidget()
+    ui.plotStack.addWidget(ui.graphicsView)
+    plot_layout.addWidget(ui.plotStack, 1)
     splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
     splitter.addWidget(ui.workspace)
     splitter.addWidget(plot_panel)
@@ -510,6 +523,7 @@ def apply_responsive_layout(ui, window):
     ui.reportDialog.resize(380, 600)
     menu.addAction('Параметры отчёта…', ui.reportDialog.show)
     menu.addAction('Загрузить настройки…', ui.pushButton_open_options.click)
+    ui.saveOptionsAction = menu.addAction('Сохранить настройки…', ui.saveOptionsButton.click)
     view_menu = window.menuBar().addMenu('Вид')
     view_action = view_menu.addAction('Рабочая панель')
     view_action.setCheckable(True)

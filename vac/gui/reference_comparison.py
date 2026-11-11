@@ -88,6 +88,7 @@ class ReferenceComparison:
     def redraw(self, *_):
         if not self.active:
             return
+        self.c.source_signal.leave()
         self.update_signals()
         c = self.c
         c.curve_editor.detach()

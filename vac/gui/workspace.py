@@ -21,6 +21,8 @@ class WorkspaceActions:
         self.refresh()
 
     def reset(self):
+        if hasattr(self.c, 'source_signal'):
+            self.c.source_signal.leave()
         if hasattr(self.c, 'curve_editor'):
             self.c.curve_editor.reset()
         self.undo_stack.clear()
@@ -82,6 +84,11 @@ class WorkspaceActions:
         ui.editButton.setEnabled(ready)
         ui.alignReportButton.setEnabled(ready)
         ui.pushButton_save_cement.setEnabled(ready)
+        ui.saveOptionsButton.setEnabled(ready)
+        ui.saveOptionsAction.setEnabled(ready)
+        original = self.c.state.interpretation.automatic_table
+        ui.sourceSignalButton.setEnabled(ready and original is not None and not original.empty and
+                                        {'depth', 'first_sig'} <= set(original.columns))
         ui.pushButton_save_cement.setToolTip('Выгрузить текущую цементограмму в Word.' if ready else
                                            'Сначала преобразуйте выбранный сигнал в цементограмму.')
         ui.undoButton.setEnabled(ready and bool(self.undo_stack))

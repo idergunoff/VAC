@@ -243,6 +243,12 @@ class CurveEditorTests(unittest.TestCase):
             if height >= 768:
                 self.assertTrue(scroll.viewport().rect().contains(
                     self.ui.raiseCurveButton.mapTo(scroll.viewport(), self.ui.raiseCurveButton.rect().bottomRight())))
+            self.ui.sourceSignalButton.click()
+            for _ in range(4):
+                self.app.processEvents()
+            self.assertEqual(self.window.width(), width)
+            self.assertGreater(self.c.source_signal.view.width(), width * .45)
+            self.ui.sourceSignalButton.click()
 
     def test_closed_windows_release_event_filters_before_collection(self):
         for _ in range(5):
@@ -311,6 +317,78 @@ class CurveEditorTests(unittest.TestCase):
         for _ in range(30):
             self.ui.undoButton.click()
         self.assertFalse(self.ui.undoButton.isEnabled())
+
+    def test_source_switch_preserves_edits_history_selection_and_plot_range(self):
+        self.ui.raiseCurveButton.click()
+        self.ui.raiseCurveButton.click()
+        self.ui.undoButton.click()
+        self.editor.set_bounds(0., 4.)
+        self.editor.anchor = 1
+        self.editor.update_status()
+        self.editor.vb.setRange(xRange=(.5, 3.5), yRange=(.5, 5.), padding=0)
+        self.app.processEvents()
+        edited = self.c.state.interpretation.table.copy(deep=True)
+        state = self.c.state.interpretation
+        history = len(self.c.workspace_actions.undo_stack), len(self.c.workspace_actions.redo_stack)
+        ranges = np.array(self.editor.vb.viewRange())
+        curve = self.editor.curve
+        for _ in range(3):
+            self.ui.sourceSignalButton.click()
+            self.app.processEvents()
+            self.assertTrue(self.ui.editButton.isChecked())
+            self.assertFalse(self.editor.active)
+            self.assertFalse(self.ui.editTools.isEnabled())
+            self.assertIs(self.ui.plotStack.currentWidget(), self.c.source_signal.view)
+            np.testing.assert_array_equal(self.c.source_signal.source.listDataItems()[0].yData, self.source.first_sig)
+            self.assertIs(self.c.state.interpretation, state)
+            pd.testing.assert_frame_equal(state.table, edited)
+            self.ui.sourceSignalButton.click()
+            self.app.processEvents()
+            self.assertTrue(self.editor.active)
+            self.assertTrue(self.ui.editTools.isEnabled())
+            self.assertIs(self.editor.curve, curve)
+            self.assertEqual(self.editor.anchor, 1)
+            self.assertEqual(self.editor.bounds, (0., 4.))
+            np.testing.assert_allclose(self.editor.vb.viewRange(), ranges, rtol=0, atol=1e-10)
+            self.assertEqual((len(self.c.workspace_actions.undo_stack), len(self.c.workspace_actions.redo_stack)), history)
+        self.ui.redoButton.click()
+        self.assertAlmostEqual(self.c.state.interpretation.table.corr_sig.iloc[2], 3.2)
+        self.ui.undoButton.click()
+        pd.testing.assert_frame_equal(self.c.state.interpretation.table, edited)
+
+    def test_source_uses_bound_measurement_for_channels_sums_and_pdf(self):
+        for equipment, label, column in [('new', '1 Измерение', 1), ('old', '1 Измерение', 1),
+                                         ('new', '9 Σ New: 1 2 ', '9_envelope'),
+                                         ('old', '13 Σ Old: 1 2 ', 13), ('new', 'pdf', 'pdf_envelope'),
+                                         ('old', 'pdf', 'pdf_envelope')]:
+            with self.subTest(equipment=equipment, label=label):
+                measurement = getattr(self.c.state, equipment)
+                measurement.signals = pd.DataFrame({'depth': np.arange(7.), column: np.arange(7.) * 10},
+                                                  index=np.arange(7) + 10)
+                if equipment == 'new' and column == 1:
+                    measurement.signals['1_envelope'] = np.arange(7.) * 5
+                self.c.state.interpretation.signal = SignalIdentity(equipment, measurement.revision, label)
+                # The mutable first_sig may have been fixed after an edit.
+                self.c.state.interpretation.table['first_sig'] = 999.
+                self.ui.sourceSignalButton.click()
+                np.testing.assert_array_equal(self.c.source_signal.amplitude.listDataItems()[0].yData, np.arange(5.) * 10)
+                np.testing.assert_array_equal(self.c.source_signal.source.listDataItems()[0].yData, self.source.first_sig)
+                self.ui.sourceSignalButton.click()
+
+    def test_source_cancels_only_unfinished_gesture_and_invalidation_returns_to_editor(self):
+        self.ui.raiseCurveButton.click()
+        edited = self.c.state.interpretation.table.copy(deep=True)
+        self.mouse(QtCore.QEvent.MouseButtonPress, 2, 3.1)
+        self.mouse(QtCore.QEvent.MouseMove, 2, 4)
+        self.ui.sourceSignalButton.click()
+        self.assertIsNone(self.editor.gesture)
+        pd.testing.assert_frame_equal(self.c.state.interpretation.table, edited)
+        self.assertEqual(len(self.c.workspace_actions.undo_stack), 1)
+        self.c.clear_interpretation()
+        self.assertFalse(self.ui.sourceSignalButton.isChecked())
+        self.assertFalse(self.ui.sourceSignalButton.isEnabled())
+        self.assertIs(self.ui.plotStack.currentWidget(), self.ui.graphicsView)
+        self.assertTrue(self.ui.editTools.isEnabled())
 
 
 if __name__ == '__main__':
